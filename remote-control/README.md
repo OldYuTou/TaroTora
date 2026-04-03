@@ -14,6 +14,10 @@
 
 ```
 remote-control/
+├── .github/
+│   └── workflows/       # GitHub Actions 配置
+│       ├── build-android.yml       # Release 构建
+│       └── build-android-debug.yml # Debug 构建
 ├── server/              # 被控端服务端（Windows）
 │   ├── src/
 │   │   ├── index.js     # 主入口
@@ -31,7 +35,9 @@ remote-control/
 │   │   │   └── Terminal.vue
 │   │   └── App.vue
 │   ├── package.json
-│   └── vite.config.js
+│   ├── vite.config.js
+│   ├── capacitor.config.json  # Capacitor 配置
+│   └── android/           # Android 项目（构建生成）
 └── frp/                 # FRP 穿透配置
     ├── frps.toml        # 服务端配置
     └── frpc.toml        # 客户端配置
@@ -151,6 +157,82 @@ local_port = 3000
 remote_port = 3000
 ```
 
+## 📱 Android App 构建
+
+本项目支持构建 Android APK，可通过 GitHub Actions 自动构建。
+
+### 方式一：GitHub Actions 自动构建（推荐）
+
+#### Debug 版本（无需配置）
+每次推送到 `master` 或 `develop` 分支时，会自动构建 Debug APK。
+
+在 Actions 页面下载构建好的 APK 文件。
+
+#### Release 版本（需要签名配置）
+
+1. **生成签名密钥**（本地执行）：
+```bash
+keytool -genkey -v -keystore tarotora.keystore -alias tarotora -keyalg RSA -keysize 2048 -validity 10000
+# 转换为 base64
+cat tarotora.keystore | base64
+```
+
+2. **配置 GitHub Secrets**：
+在仓库 Settings → Secrets and variables → Actions 中添加：
+- `SIGNING_KEY`: 上面生成的 base64 编码的密钥文件
+- `ALIAS`: 密钥别名（如：tarotora）
+- `KEY_STORE_PASSWORD`: 密钥库密码
+- `KEY_PASSWORD`: 密钥密码
+
+3. **创建 Release**：
+推送带有 `v` 前缀的标签，会自动构建并发布到 GitHub Releases：
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+### 方式二：本地构建
+
+#### 前置要求
+- Node.js 20+
+- Java 17
+- Android Studio（用于 SDK）
+- Android SDK 34
+
+#### 构建步骤
+
+```bash
+cd remote-control/web
+
+# 1. 安装依赖
+npm install
+
+# 2. 构建 Vue 应用
+npm run build
+
+# 3. 添加 Android 平台（首次）
+npm run cap:add:android
+
+# 4. 同步代码到 Android 项目
+npm run cap:sync
+
+# 5. 打开 Android Studio 构建（或命令行构建）
+npm run cap:open
+# 或者在 android 目录执行：
+# ./gradlew assembleDebug    # Debug 版本
+# ./gradlew assembleRelease  # Release 版本
+```
+
+构建完成后，APK 文件位于：
+- Debug: `android/app/build/outputs/apk/debug/app-debug.apk`
+- Release: `android/app/build/outputs/apk/release/app-release.apk`
+
+### 自定义配置
+
+如需修改 App 名称、图标或包名，编辑：
+- `web/capacitor.config.json` - Capacitor 配置
+- `web/android/app/src/main/res/` - Android 资源文件
+
 ## 📱 使用说明
 
 ### 首次使用
@@ -193,7 +275,9 @@ remote_port = 3000
 
 - **后端**: Node.js + Express + Socket.IO + node-pty
 - **前端**: Vue3 + Element Plus + Xterm.js
+- **移动端**: Capacitor (Android)
 - **穿透**: FRP (Fast Reverse Proxy)
+- **CI/CD**: GitHub Actions
 
 ## 📝 许可证
 

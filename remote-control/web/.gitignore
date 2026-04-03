@@ -1,0 +1,22 @@
+# Build configuration
+/android
+/ios
+/dist
+/node_modules
+
+# IDE
+.idea
+.vscode
+*.iml
+
+# Gradle
+.gradle
+/build
+/app/build
+
+# Local configuration
+local.properties
+
+# OS files
+.DS_Store
+Thumbs.db
