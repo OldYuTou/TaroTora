@@ -1,0 +1,29 @@
+# FRP 服务端配置
+# 将此文件保存为 frps.toml，运行在公网服务器上
+
+[common]
+# 监听端口
+bind_port = 7000
+
+# Dashboard 配置（可选，用于监控）
+dashboard_port = 7500
+dashboard_user = admin
+dashboard_password = admin123
+
+# 认证配置
+token = your-frp-token-here
+
+# 心跳配置
+heartbeat_timeout = 90
+heartbeat_interval = 30
+
+# 连接池配置
+max_pool_count = 50
+
+# 日志配置
+log_file = ./frps.log
+log_level = info
+log_max_days = 3
+
+# 允许代理的端口范围
+allow_ports = 3000-3100,8080-8090

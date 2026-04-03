@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STL 文件预览器</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Three.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Three.js STLLoader -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+  <!-- Three.js OrbitControls -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔧 STL 文件预览器</h1>
+      <div class="controls">
+        <label for="file-select">选择文件:</label>
+        <select id="file-select">
+          <option value="">加载中...</option>
+        </select>
+        <span id="file-info"></span>
+      </div>
+    </header>
+
+    <main>
+      <div id="canvas-container">
+        <div id="loading" class="loading">
+          <div class="spinner"></div>
+          <p>正在加载 3D 模型...</p>
+        </div>
+        <div id="empty-state" class="empty-state">
+          <p>📁 暂无 STL 文件</p>
+          <p>请将 .stl 文件放入项目的 stl/ 目录</p>
+        </div>
+        <div id="error-state" class="error-state hidden">
+          <p>❌ 加载失败</p>
+          <p id="error-message"></p>
+        </div>
+      </div>
+
+      <div id="model-info" class="model-info hidden">
+        <h3>模型信息</h3>
+        <div class="info-grid">
+          <div><span>文件名:</span> <span id="info-name">-</span></div>
+          <div><span>文件大小:</span> <span id="info-size">-</span></div>
+          <div><span>修改时间:</span> <span id="info-time">-</span></div>
+          <div><span>顶点数:</span> <span id="info-vertices">-</span></div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>支持鼠标操作：左键旋转 | 右键平移 | 滚轮缩放</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "skills": {
+    "code": {
+      "name": "Code",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=code",
+      "source": "skillhub",
+      "version": "1.0.4"
+    },
+    "code-review": {
+      "name": "Code Review",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=code-review",
+      "source": "skillhub",
+      "version": "1.0.0"
+    },
+    "code-analyzer": {
+      "name": "Code Analyzer",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=code-analyzer",
+      "source": "skillhub",
+      "version": "1.0.0"
+    },
+    "git": {
+      "name": "Git",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=git",
+      "source": "skillhub",
+      "version": "1.0.8"
+    },
+    "github": {
+      "name": "Github",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=github",
+      "source": "skillhub",
+      "version": "1.0.0"
+    },
+    "dev-task": {
+      "name": "Dev Task",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=dev-task",
+      "source": "skillhub",
+      "version": "1.0.1"
+    },
+    "multi-search-engine": {
+      "name": "Multi Search Engine",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=multi-search-engine",
+      "source": "skillhub",
+      "version": "2.0.1"
+    },
+    "skill-creator": {
+      "name": "Skill Creator",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=skill-creator",
+      "source": "skillhub",
+      "version": "0.1.0"
+    },
+    "auto-updater": {
+      "name": "Auto-Updater Skill",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=auto-updater",
+      "source": "skillhub",
+      "version": "1.0.0"
+    },
+    "skill-scanner": {
+      "name": "Skill Scanner",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=skill-scanner",
+      "source": "skillhub",
+      "version": "0.1.2"
+    },
+    "word-docx": {
+      "name": "Word / DOCX",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=word-docx",
+      "source": "skillhub",
+      "version": "1.0.2"
+    },
+    "nano-pdf": {
+      "name": "Nano Pdf",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=nano-pdf",
+      "source": "skillhub",
+      "version": "1.0.0"
+    },
+    "self-improving-agent": {
+      "name": "self-improving-agent",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=self-improving-agent",
+      "source": "skillhub",
+      "version": "1.0.11"
+    }
+  }
+}
