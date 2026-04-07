@@ -1,3 +1,20 @@
+<!--
+  TaroTora - Remote Control System
+  Copyright (C) 2026 OldYuTou
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as published
+  by the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
 <template>
   <div class="process-manager">
     <!-- 工具栏 -->
@@ -113,18 +130,36 @@ const filteredProcesses = computed(() => {
 })
 
 // 加载进程列表
-async function loadProcesses() {
-  loading.value = true
+async function loadProcesses(silent = false) {
+  if (!silent) {
+    loading.value = true
+  }
+  // 保存当前选中的进程 PID
+  const selectedPid = selectedProcess.value?.pid
   try {
     const res = await axios.get(`${API_BASE}/processes/list`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     processes.value = res.data.processes
+    // 刷新后恢复选中状态
+    if (selectedPid) {
+      const stillExists = res.data.processes.find(p => p.pid === selectedPid)
+      if (stillExists) {
+        selectedProcess.value = stillExists
+      } else {
+        // 进程已结束，清空选中
+        selectedProcess.value = null
+      }
+    }
   } catch (error) {
     console.error('加载进程失败:', error)
-    ElMessage.error('加载进程列表失败')
+    if (!silent) {
+      ElMessage.error('加载进程列表失败')
+    }
   } finally {
-    loading.value = false
+    if (!silent) {
+      loading.value = false
+    }
   }
 }
 
@@ -188,8 +223,8 @@ let refreshTimer = null
 
 onMounted(() => {
   loadProcesses()
-  // 每 5 秒自动刷新
-  refreshTimer = setInterval(loadProcesses, 5000)
+  // 每 5 秒自动刷新（静默模式，不显示 loading）
+  refreshTimer = setInterval(() => loadProcesses(true), 5000)
 })
 
 onUnmounted(() => {

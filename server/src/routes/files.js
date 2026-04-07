@@ -1,4 +1,22 @@
 /**
+ * TaroTora - Remote Control System
+ * Copyright (C) 2026 OldYuTou
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/**
  * 文件管理路由
  * 提供文件浏览、上传、下载、删除等功能
  */
@@ -196,22 +214,23 @@ router.post('/mkdir', async (req, res) => {
 router.get('/drives', async (req, res) => {
   try {
     const { stdout } = await execPromise('wmic logicaldisk get name,size,freespace /format:csv');
-    const lines = stdout.trim().split('\\n').slice(1); // 跳过标题
-    
+    const lines = stdout.trim().split(/\r?\n/).slice(1); // 跳过标题
+
     const drives = [];
     for (const line of lines) {
       const parts = line.trim().split(',');
-      if (parts.length >= 4) {
+      if (parts.length >= 4 && parts[2]) {
         drives.push({
-          letter: parts[1],
-          freeSpace: parseInt(parts[2]) || 0,
+          letter: parts[2],
+          freeSpace: parseInt(parts[1]) || 0,
           totalSize: parseInt(parts[3]) || 0
         });
       }
     }
-    
+
     res.json({ drives });
   } catch (error) {
+    console.error('Get drives error:', error);
     // Fallback: 返回常见盘符
     res.json({
       drives: ['C:', 'D:', 'E:'].map(letter => ({

@@ -1,3 +1,20 @@
+<!--
+  TaroTora - Remote Control System
+  Copyright (C) 2026 OldYuTou
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as published
+  by the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
 <template>
   <el-container class="app-container">
     <!-- 侧边栏导航 - 只在非登录页面显示 -->
@@ -56,7 +73,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { io } from 'socket.io-client'
 import axios from 'axios'
@@ -68,22 +85,92 @@ const connected = ref(false)
 
 const isLoginPage = computed(() => route.path === '/login')
 
+let socket = null
+
+// 连接 WebSocket
+function connectSocket() {
+  const token = localStorage.getItem('auth_token')
+  const serverUrl = localStorage.getItem('server_url')
+
+  if (!token || !serverUrl) return
+
+  // 如果已有全局连接且已连接，直接更新状态
+  if (window.controlSocket?.connected) {
+    connected.value = true
+    return
+  }
+
+  // 断开旧连接
+  if (socket) {
+    socket.disconnect()
+  }
+
+  socket = io(serverUrl, {
+    transports: ['websocket', 'polling']
+  })
+
+  socket.on('connect', () => {
+    console.log('WebSocket connected')
+    connected.value = true
+    socket.emit('auth', token)
+  })
+
+  socket.on('auth', (status) => {
+    console.log('Auth status:', status)
+    if (status === 'success') {
+      connected.value = true
+    }
+  })
+
+  socket.on('disconnect', () => {
+    console.log('WebSocket disconnected')
+    connected.value = false
+  })
+
+  socket.on('connect_error', (err) => {
+    console.error('WebSocket error:', err)
+    connected.value = false
+  })
+
+  // 保存到全局
+  window.controlSocket = socket
+
+  // 如果已经连接（快速连接情况），立即更新状态
+  if (socket.connected) {
+    connected.value = true
+  }
+}
+
 // 检查是否已登录
 function checkAuth() {
   const token = localStorage.getItem('auth_token')
-  const serverUrl = localStorage.getItem('server_url')
-  
+  let serverUrl = localStorage.getItem('server_url')
+
   if (!token || !serverUrl) {
     if (route.path !== '/login') {
       router.push('/login')
     }
     return false
   }
-  
+
+  // 处理 localhost 和 127.0.0.1 不一致的问题
+  const currentHost = window.location.hostname
+  if (currentHost === '127.0.0.1' && serverUrl.includes('localhost')) {
+    serverUrl = serverUrl.replace('localhost', '127.0.0.1')
+  } else if (currentHost === 'localhost' && serverUrl.includes('127.0.0.1')) {
+    // 保持原样
+  }
+
   // 设置 axios 默认配置
   axios.defaults.baseURL = serverUrl
   axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-  
+
+  // 更新 localStorage 中的地址
+  localStorage.setItem('server_url', serverUrl)
+
+  // 连接 WebSocket
+  connectSocket()
+
   return true
 }
 
@@ -97,7 +184,7 @@ function logout() {
 
 onMounted(() => {
   checkAuth()
-  
+
   // 路由守卫
   router.beforeEach((to, from, next) => {
     if (to.path === '/login') {
@@ -111,26 +198,6 @@ onMounted(() => {
       }
     }
   })
-  
-  // 尝试连接 WebSocket
-  const token = localStorage.getItem('auth_token')
-  if (token) {
-    const socket = io('/', {
-      autoConnect: false
-    })
-    
-    socket.on('connect', () => {
-      connected.value = true
-      socket.emit('auth', token)
-    })
-    
-    socket.on('disconnect', () => {
-      connected.value = false
-    })
-    
-    // 保存到全局
-    window.controlSocket = socket
-  }
 })
 </script>
 

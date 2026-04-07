@@ -1,3 +1,20 @@
+<!--
+  TaroTora - Remote Control System
+  Copyright (C) 2026 OldYuTou
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as published
+  by the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
 <template>
   <div class="login-page">
     <div class="login-box">
@@ -72,6 +89,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Monitor, Lock, Connection } from '@element-plus/icons-vue'
+import { io } from 'socket.io-client'
 import axios from 'axios'
 
 const router = useRouter()
@@ -114,7 +132,25 @@ async function handleLogin() {
       // 设置 axios 默认配置
       axios.defaults.baseURL = loginForm.server
       axios.defaults.headers.common['Authorization'] = `Bearer ${loginForm.token}`
-      
+
+      // 建立 WebSocket 连接
+      const socket = io(loginForm.server, {
+        transports: ['websocket', 'polling']
+      })
+
+      socket.on('connect', () => {
+        socket.emit('auth', loginForm.token)
+      })
+
+      socket.on('auth', (status) => {
+        if (status === 'success') {
+          console.log('WebSocket authenticated')
+        }
+      })
+
+      // 保存到全局
+      window.controlSocket = socket
+
       ElMessage.success('登录成功')
       router.push('/files')
     }

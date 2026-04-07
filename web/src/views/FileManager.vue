@@ -1,14 +1,32 @@
+<!--
+  TaroTora - Remote Control System
+  Copyright (C) 2026 OldYuTou
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as published
+  by the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
 <template>
   <div class="file-manager">
     <!-- 工具栏 -->
     <div class="toolbar">
-      <el-button @click="goBack" :disabled="!currentPath">
+      <el-button @click="goBack">
         <el-icon><ArrowUp /></el-icon> 上级目录
       </el-button>
       
       <el-breadcrumb separator="/" class="breadcrumb">
-        <el-breadcrumb-item v-for="(item, index) in pathParts" :key="index">
-          {{ item || '此电脑' }}
+        <el-breadcrumb-item v-if="showDrivesView || !currentPath">此电脑</el-breadcrumb-item>
+        <el-breadcrumb-item v-for="(item, index) in pathParts" :key="index" v-else>
+          {{ item }}
         </el-breadcrumb-item>
       </el-breadcrumb>
       
@@ -135,12 +153,15 @@ const currentPath = ref('')
 const loading = ref(false)
 const searchText = ref('')
 const isSearching = ref(false)
+const showDrivesView = ref(false)
+const drives = ref([])
 
 // 过滤后的文件列表
 const filteredFileList = computed(() => {
-  if (!searchText.value || isSearching.value) return fileList.value
+  const list = showDrivesView.value ? drives.value : fileList.value
+  if (!searchText.value || isSearching.value) return list
   const search = searchText.value.toLowerCase()
-  return fileList.value.filter(item => 
+  return list.filter(item =>
     item.name.toLowerCase().includes(search)
   )
 })
@@ -168,10 +189,37 @@ const uploadHeaders = computed(() => ({
   Authorization: `Bearer ${token}`
 }))
 
+// 加载盘符列表
+async function loadDrives() {
+  loading.value = true
+  try {
+    const res = await axios.get(`${API_BASE}/files/drives`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    drives.value = res.data.drives.map(drive => ({
+      name: drive.letter,
+      path: drive.letter + '\\',
+      type: 'directory',
+      size: 0,
+      modified: new Date(),
+      isHidden: false
+    }))
+    showDrivesView.value = true
+    currentPath.value = ''
+  } catch (error) {
+    console.error('加载盘符失败:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
 // 加载文件列表
 async function loadFiles(path = '') {
   loading.value = true
+  // 先清空旧数据，避免显示闪动
+  fileList.value = []
   try {
+    showDrivesView.value = false
     const res = await axios.get(`${API_BASE}/files/list`, {
       params: { path },
       headers: { Authorization: `Bearer ${token}` }
@@ -265,9 +313,15 @@ async function confirmRename() {
 
 // 其他方法
 function goBack() {
-  // 简化实现：加载父目录
+  // 如果当前在盘符根目录（如 C:\），返回到盘符选择页面
+  if (!currentPath.value || currentPath.value === '' ||
+      /^[A-Z]:\\?$/i.test(currentPath.value)) {
+    loadDrives()
+    return
+  }
+  // 否则加载父目录
   const parent = currentPath.value.substring(0, currentPath.value.lastIndexOf('\\'))
-  loadFiles(parent || 'C:\\')
+  loadFiles(parent || '')
 }
 
 function refresh() {
@@ -316,7 +370,7 @@ function handleClickOutside() {
 }
 
 onMounted(() => {
-  loadFiles()
+  loadDrives()
   document.addEventListener('click', handleClickOutside)
 })
 

@@ -1,4 +1,22 @@
 /**
+ * TaroTora - Remote Control System
+ * Copyright (C) 2026 OldYuTou
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/**
  * 进程管理路由
  * 提供进程列表、结束进程等功能
  */
@@ -25,9 +43,15 @@ router.get('/list', async (req, res) => {
       StartTime | ConvertTo-Json -Compress
     `;
     
-    const { stdout } = await execPromise(`powershell.exe -Command "${psCommand.replace(/"/g, '\\"')}"`, {
-      maxBuffer: 10 * 1024 * 1024 // 10MB buffer for large process lists
+    // 使用 Base64 编码避免转义问题
+    const psBase64 = Buffer.from(psCommand, 'utf16le').toString('base64');
+    const { stdout, stderr } = await execPromise(`powershell.exe -EncodedCommand ${psBase64}`, {
+      maxBuffer: 10 * 1024 * 1024
     });
+
+    if (stderr) {
+      console.error('PowerShell stderr:', stderr);
+    }
     
     let processes = [];
     try {

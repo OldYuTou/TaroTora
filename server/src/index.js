@@ -1,4 +1,22 @@
 /**
+ * TaroTora - Remote Control System
+ * Copyright (C) 2026 OldYuTou
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/**
  * 远程控制被控端主入口
  * 提供文件管理、进程管理、Web终端功能
  */
@@ -45,9 +63,18 @@ app.use('/api/files', authMiddleware, fileRoutes);
 app.use('/api/processes', authMiddleware, processRoutes);
 app.use('/api/system', authMiddleware, systemRoutes);
 
-// 健康检查
-app.get('/health', (req, res) => {
+// 静态文件服务（前端页面）
+const webDistPath = path.join(__dirname, '../../web/dist');
+app.use(express.static(webDistPath));
+
+// 健康检查（需要认证）
+app.get('/health', authMiddleware, (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// 所有其他路由返回 index.html（支持前端路由）
+app.get('*', (req, res) => {
+  res.sendFile(path.join(webDistPath, 'index.html'));
 });
 
 // WebSocket 终端
