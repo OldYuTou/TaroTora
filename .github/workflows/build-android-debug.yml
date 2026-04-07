@@ -1,0 +1,68 @@
+name: Build Android APK (Debug)
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build-android-debug:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: remote-control/web/package-lock.json
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Install dependencies
+      working-directory: remote-control/web
+      run: |
+        npm ci
+
+    - name: Build Vue app
+      working-directory: remote-control/web
+      run: |
+        npm run build
+
+    - name: Install Capacitor CLI
+      run: |
+        npm install -g @capacitor/cli
+
+    - name: Setup Capacitor Android project
+      working-directory: remote-control/web
+      run: |
+        # 创建 Android 项目
+        if [ ! -d "android" ]; then
+          npx cap add android
+        fi
+        npx cap sync android
+
+    - name: Build Debug APK
+      working-directory: remote-control/web/android
+      run: |
+        chmod +x gradlew
+        ./gradlew assembleDebug
+
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: debug-apk
+        path: remote-control/web/android/app/build/outputs/apk/debug/app-debug.apk
+        retention-days: 7
