@@ -21,7 +21,7 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
-        cache-dependency-path: remote-control/web/package-lock.json
+        cache-dependency-path: web/package-lock.json
 
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -33,12 +33,12 @@ jobs:
       uses: android-actions/setup-android@v3
 
     - name: Install dependencies
-      working-directory: remote-control/web
+      working-directory: web
       run: |
         npm ci
 
     - name: Build Vue app
-      working-directory: remote-control/web
+      working-directory: web
       run: |
         npm run build
 
@@ -47,7 +47,7 @@ jobs:
         npm install -g @capacitor/cli
 
     - name: Setup Capacitor Android project
-      working-directory: remote-control/web
+      working-directory: web
       run: |
         # 创建 Android 项目（如果不存在）
         if [ ! -d "android" ]; then
@@ -66,7 +66,7 @@ jobs:
       uses: r0adkll/sign-android-release@v1
       id: sign_app
       with:
-        releaseDirectory: remote-control/web/android/app/build/outputs/apk/release
+        releaseDirectory: web/android/app/build/outputs/apk/release
         signingKeyBase64: ${{ secrets.SIGNING_KEY }}
         alias: ${{ secrets.ALIAS }}
         keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
@@ -79,7 +79,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: unsigned-apk
-        path: remote-control/web/android/app/build/outputs/apk/release/app-release-unsigned.apk
+        path: web/android/app/build/outputs/apk/release/app-release-unsigned.apk
 
     - name: Upload signed APK
       if: github.event_name != 'pull_request'

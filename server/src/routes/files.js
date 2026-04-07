@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     cb(null, file.originalname);
   }
-}});
+});
 
 const upload = multer({ storage });
 
@@ -133,7 +133,7 @@ router.delete('/delete', async (req, res) => {
     const stats = await fs.stat(resolvedPath);
     
     if (stats.isDirectory()) {
-      await fs.rmdir(resolvedPath, { recursive: true });
+      await fs.rm(resolvedPath, { recursive: true });
     } else {
       await fs.unlink(resolvedPath);
     }

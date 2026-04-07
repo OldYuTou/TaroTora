@@ -12,6 +12,7 @@ require('dotenv').config();
 
 const fileRoutes = require('./routes/files');
 const processRoutes = require('./routes/processes');
+const systemRoutes = require('./routes/system');
 const terminalSocket = require('./routes/terminal');
 
 const app = express();

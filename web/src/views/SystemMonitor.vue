@@ -40,7 +40,7 @@
         <el-col :span="6">
           <el-card class="stat-card">
             <div class="stat-icon" style="background: #e6a23c">
-              <el-icon><Disc /></el-icon>
+              <el-icon><Coin /></el-icon>
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ systemInfo.diskUsage }}%</div>
@@ -104,7 +104,7 @@
         <el-card>
           <template #header>
             <div class="card-header">
-              <span><el-icon><Disc /></el-icon> 磁盘分区</span>
+              <span><el-icon><Coin /></el-icon> 磁盘分区</span>
             </div>
           </template>
           
@@ -186,7 +186,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
-import { Cpu, Histogram, Disc, Timer, InfoFilled, Refresh } from '@element-plus/icons-vue'
+import { Cpu, Histogram, Coin, Timer, InfoFilled, Refresh } from '@element-plus/icons-vue'
 
 const API_BASE = '/api'
 const token = localStorage.getItem('auth_token')
