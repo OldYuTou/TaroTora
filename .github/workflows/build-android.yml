@@ -56,7 +56,7 @@ jobs:
         npx cap sync android
 
     - name: Build APK
-      working-directory: remote-control/web/android
+      working-directory: web/android
       run: |
         chmod +x gradlew
         ./gradlew assembleRelease
