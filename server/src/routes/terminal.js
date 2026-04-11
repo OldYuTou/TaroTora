@@ -31,8 +31,19 @@ const persistentSessions = new Map();
 // 存储 socket 与终端的映射关系 - key: socket.id, value: Set<terminalId>
 const socketTerminals = new Map();
 
+const MAX_OUTPUT_BUFFER_SIZE = 10 * 1024 * 1024;
+
 // 自动清理已禁用 - 终端会一直保持运行直到用户手动关闭
 // 不再清理无连接的终端，用户需要通过 terminal-close 主动关闭
+
+function appendOutputBuffer(session, data) {
+  session.outputBuffer.push(data);
+  session.outputBufferSize += Buffer.byteLength(data, 'utf8');
+
+  while (session.outputBufferSize > MAX_OUTPUT_BUFFER_SIZE && session.outputBuffer.length > 0) {
+    session.outputBufferSize -= Buffer.byteLength(session.outputBuffer.shift(), 'utf8');
+  }
+}
 
 /**
  * 创建或恢复终端会话
@@ -73,7 +84,7 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
     }
     socketTerminals.get(socket.id).add(terminalId);
 
-    // 发送历史输出（最近的 1000 行缓存）
+    // 发送历史输出。终端进程不会因手机端断开而停止，重连时用缓存回放最近输出。
     const history = existingSession.outputBuffer.join('');
     if (history) {
       socket.emit('terminal-output', { terminalId, data: history });
@@ -112,7 +123,8 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
       createdAt: Date.now(),
       lastActivity: Date.now(),
       lastDisconnectTime: null,
-      outputBuffer: [] // 输出缓存，用于恢复连接
+      outputBuffer: [], // 输出缓存，用于恢复连接
+      outputBufferSize: 0
     };
 
     persistentSessions.set(terminalId, session);
@@ -125,12 +137,7 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
 
     // 转发 PTY 输出到所有连接的客户端
     ptyProcess.onData((data) => {
-      // 缓存输出（最多保留 100KB）
-      session.outputBuffer.push(data);
-      const totalSize = session.outputBuffer.reduce((sum, chunk) => sum + chunk.length, 0);
-      while (totalSize > 100 * 1024 && session.outputBuffer.length > 0) {
-        session.outputBuffer.shift();
-      }
+      appendOutputBuffer(session, data);
 
       // 发送给所有连接的客户端
       session.connections.forEach(socketId => {

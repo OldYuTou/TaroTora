@@ -220,6 +220,7 @@ const DOUBLE_TAP_DELAY = 320
 const TAP_MOVE_LIMIT = 18
 const GESTURE_THRESHOLD = 8
 const LONG_PRESS_DELAY = 550
+const TERMINAL_SCROLLBACK_LINES = 50000
 
 let terminalTouchState = null
 let longPressTimer = null
@@ -310,6 +311,15 @@ function getTerminalViewport(index) {
 
 function getTerminalScreen(index) {
   return terminalRefs.value[index]?.querySelector('.xterm-screen') || terminalRefs.value[index] || null
+}
+
+function getTerminalLineHeight(index) {
+  const term = getTerminalInstance(index)
+  const containerHeight = terminalRefs.value[index]?.clientHeight || 0
+  if (term?.xterm?.rows && containerHeight) {
+    return Math.max(12, containerHeight / term.xterm.rows)
+  }
+  return 18
 }
 
 function refreshTerminalViewport(index = activeTerminalIndex.value, shouldFit = false) {
@@ -449,6 +459,7 @@ function handleTerminalTouchStart(event, index) {
       screenX: touch.screenX,
       screenY: touch.screenY
     },
+    scrollRemainder: 0,
     gesture: isDoubleTap ? 'input' : null,
     selectionStarted: false,
     longPressTriggered: false
@@ -487,9 +498,17 @@ function handleTerminalTouchMove(event) {
   }
 
   if (terminalTouchState.gesture === 'scroll') {
-    const viewport = getTerminalViewport(terminalTouchState.index)
-    if (viewport) {
-      viewport.scrollTop -= touch.clientY - terminalTouchState.lastPoint.clientY
+    const term = getTerminalInstance(terminalTouchState.index)
+    if (term?.xterm) {
+      const lineHeight = getTerminalLineHeight(terminalTouchState.index)
+      const deltaY = terminalTouchState.lastPoint.clientY - touch.clientY
+      terminalTouchState.scrollRemainder += deltaY
+      const lines = Math.trunc(terminalTouchState.scrollRemainder / lineHeight)
+
+      if (lines !== 0) {
+        term.xterm.scrollLines(lines)
+        terminalTouchState.scrollRemainder -= lines * lineHeight
+      }
     }
     event.preventDefault()
   } else if (terminalTouchState.gesture === 'select') {
@@ -899,7 +918,7 @@ async function initXterm(id, index) {
       cyan: '#39c5cf',
       white: '#c9d1d9'
     },
-    scrollback: 10000,
+    scrollback: TERMINAL_SCROLLBACK_LINES,
     allowProposedApi: true,
     // 启用平滑滚动
     smoothScrollDuration: 125,
