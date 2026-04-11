@@ -189,5 +189,17 @@
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.1.apk 返回上传成功",
       "bdpan ls TaroTora 确认远端存在 TaroTora-release-v1.4.1.apk，大小约 3.4 MB"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "记录移动端终端输入后视图消失复盘",
+    "changes": [
+      "新增 docs/postmortems/2026-04-12-mobile-terminal-keyboard.md，记录手机端终端唤起键盘后首次输入导致视图消失的现象、根因、修复和验证",
+      "在 CLAUDE.md 的问题复盘索引中加入移动端终端键盘问题复盘入口"
+    ],
+    "verification": [
+      "用户手机端复测确认修复正常",
+      "node JSON 解析检查 history.json 通过"
+    ]
   }
 ]

@@ -55,6 +55,7 @@
 - 每篇复盘建议包含：现象、根因、修复内容、验证结果、后续注意。
 - 新增或迁移复盘文档后，同步更新 `history.json`。
 - 本次 APK WebSocket 问题复盘见 `docs/postmortems/2026-04-11-apk-websocket.md`。
+- 移动端终端输入后视图消失问题复盘见 `docs/postmortems/2026-04-12-mobile-terminal-keyboard.md`。
 
 ### 测试与交付规范
 
