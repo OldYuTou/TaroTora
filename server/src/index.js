@@ -41,12 +41,35 @@ app.post('/api/server/shutdown', authMiddleware, (req, res) => {
 app.use('/api/files', authMiddleware, fileRoutes);
 app.use('/api/processes', authMiddleware, processRoutes);
 app.use('/api/system', authMiddleware, systemRoutes);
+const connectedClients = new Map();
+
 app.use('/api/app', appRoutes);
 
-io.use((socket, next) => socket.handshake.auth.token === AUTH_TOKEN ? next() : next(new Error('Auth error')));
-io.on('connection', (socket) => { console.log('[Socket] Connected:', socket.id); terminalSocket(socket); socket.on('disconnect', () => console.log('[Socket] Disconnected:', socket.id)); });
+io.use((socket, next) => {
+  const authToken = socket.handshake.auth?.token;
+  const headerToken = socket.handshake.headers?.authorization?.replace(/^Bearer\s+/i, '');
+  const token = authToken || headerToken;
 
-const connectedClients = new Map();
+  if (token !== AUTH_TOKEN) {
+    return next(new Error('Auth error'));
+  }
+
+  socket.data.isAuthenticated = true;
+  next();
+});
+
+io.on('connection', (socket) => {
+  console.log('[Socket] Connected:', socket.id);
+  connectedClients.set(socket.id, { socket, connectedAt: Date.now() });
+
+  terminalSocket(socket);
+
+  socket.on('disconnect', () => {
+    connectedClients.delete(socket.id);
+    console.log('[Socket] Disconnected:', socket.id);
+  });
+});
+
 app.post('/api/notifications', authMiddleware, (req, res) => {
   const { title, message, type = 'info' } = req.body;
   if (!title || !message) return res.status(400).json({ success: false, error: 'Missing fields' });

@@ -1,0 +1,18 @@
+[
+  {
+    "date": "2026-04-11",
+    "summary": "修复 Socket.IO 握手认证与通知客户端登记问题",
+    "changes": [
+      "统一前端 App、桌面控制页和终端页的 Socket.IO 握手 token 传递方式",
+      "服务端在握手认证通过后记录 socket 认证状态，并向客户端返回 auth success",
+      "服务端登记和清理已连接 socket，使通知接口可以推送到在线客户端",
+      "补充 busboy 为服务端直接依赖，避免上传接口依赖传递依赖"
+    ],
+    "verification": [
+      "web: npm run build",
+      "server: node --check src/**/*.js",
+      "server: 临时端口启动健康检查",
+      "socket: 验证错误 token 被拒绝、正确 token 收到 auth success、terminal-list 返回、通知推送成功"
+    ]
+  }
+]

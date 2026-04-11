@@ -132,6 +132,7 @@ function connectSocket() {
   const serverUrl = localStorage.getItem('server_url') || 'http://localhost:3000'
 
   socket = io(serverUrl, {
+    auth: { token },
     transports: ['websocket', 'polling']
   })
 

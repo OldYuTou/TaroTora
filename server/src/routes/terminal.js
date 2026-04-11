@@ -179,13 +179,21 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
  */
 function terminalSocket(socket) {
   // 存储认证状态
-  let isAuthenticated = false;
+  const AUTH_TOKEN = process.env.AUTH_TOKEN || 'default-token';
+  let isAuthenticated = socket.data?.isAuthenticated === true;
+
+  if (isAuthenticated) {
+    socket.emit('auth', 'success');
+  }
 
   // 监听认证事件
   socket.on('auth', (token) => {
-    const AUTH_TOKEN = process.env.AUTH_TOKEN || 'default-token';
-    if (token === AUTH_TOKEN) {
+    if (isAuthenticated || token === AUTH_TOKEN) {
       isAuthenticated = true;
+      socket.data.isAuthenticated = true;
+      socket.emit('auth', 'success');
+    } else {
+      socket.emit('auth', 'error');
     }
   });
 

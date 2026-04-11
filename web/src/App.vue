@@ -253,6 +253,7 @@ function connectSocket() {
   if (socket) socket.disconnect()
 
   socket = io(serverUrl, {
+    auth: { token },
     transports: ['websocket', 'polling']
   })
 
