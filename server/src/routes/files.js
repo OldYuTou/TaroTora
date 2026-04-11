@@ -213,32 +213,40 @@ router.post('/mkdir', async (req, res) => {
  */
 router.get('/drives', async (req, res) => {
   try {
-    const { stdout } = await execPromise('wmic logicaldisk get name,size,freespace /format:csv');
-    const lines = stdout.trim().split(/\r?\n/).slice(1); // 跳过标题
+    // 使用 PowerShell 获取磁盘信息（wmic 已弃用）
+    const cmd = 'powershell -Command "Get-CimInstance Win32_LogicalDisk | Select-Object DeviceID,Size,FreeSpace | ConvertTo-Json -Compress"';
+    const { stdout } = await execPromise(cmd);
 
+    const data = JSON.parse(stdout);
     const drives = [];
-    for (const line of lines) {
-      const parts = line.trim().split(',');
-      if (parts.length >= 4 && parts[2]) {
+
+    // 处理单个或多个磁盘的情况
+    const diskArray = Array.isArray(data) ? data : [data];
+
+    for (const disk of diskArray) {
+      if (disk.DeviceID) {
         drives.push({
-          letter: parts[2],
-          freeSpace: parseInt(parts[1]) || 0,
-          totalSize: parseInt(parts[3]) || 0
+          letter: disk.DeviceID,
+          freeSpace: disk.FreeSpace || 0,
+          totalSize: disk.Size || 0
         });
       }
     }
 
+    console.log('[Drives] Found drives:', drives.map(d => d.letter).join(', '));
     res.json({ drives });
   } catch (error) {
     console.error('Get drives error:', error);
-    // Fallback: 返回常见盘符
-    res.json({
-      drives: ['C:', 'D:', 'E:'].map(letter => ({
-        letter,
+    // Fallback: 返回常见盘符，但按字母顺序包含更多
+    const fallbackDrives = [];
+    for (let c = 67; c <= 90; c++) { // C 到 Z
+      fallbackDrives.push({
+        letter: String.fromCharCode(c) + ':',
         freeSpace: 0,
         totalSize: 0
-      }))
-    });
+      });
+    }
+    res.json({ drives: fallbackDrives });
   }
 });
 
