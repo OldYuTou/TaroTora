@@ -45,7 +45,9 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
   const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
 
   // 检查路径是否存在，不存在则使用 home 目录
+  console.log(`[Terminal] createOrResumeTerminal called with cwd: "${cwd}"`);
   let workingDir = cwd || os.homedir();
+  console.log(`[Terminal] Using workingDir: "${workingDir}"`);
   if (cwd) {
     try {
       fs.accessSync(cwd, fs.constants.F_OK);
@@ -200,6 +202,8 @@ function terminalSocket(socket) {
       return;
     }
 
+    console.log();
+    console.log(`[Terminal] Received cwd from client: "${cwd}"`);
     await createOrResumeTerminal(socket, terminalId, { cwd, cols, rows });
   });
 
