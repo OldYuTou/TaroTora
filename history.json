@@ -38,5 +38,19 @@
       "Socket.IO: 127.0.0.1:3000 和 REDACTED_LAN_IP:3000 握手通过",
       "FRP 公网端口 REDACTED_IP:REDACTED_PORT 仍不可达，判断为公网端口/防火墙问题"
     ]
+  },
+  {
+    "date": "2026-04-11",
+    "summary": "修复 HTTPS 公网页面复用旧 HTTP 服务器地址导致 WebSocket 失败的问题",
+    "changes": [
+      "登录页默认使用当前非 localhost 页面 origin 作为服务器地址",
+      "HTTPS 页面检测到缓存的 HTTP server_url 时自动切换为当前 HTTPS origin",
+      "重新构建前端并同步到 server/public"
+    ],
+    "verification": [
+      "web: npm run build",
+      "https://REDACTED_DOMAIN 加载最新静态资源 index-df9c34b9.js",
+      "Socket.IO: https://REDACTED_DOMAIN websocket 握手通过"
+    ]
   }
 ]
