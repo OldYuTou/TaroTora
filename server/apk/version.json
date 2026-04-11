@@ -1,0 +1,8 @@
+{
+  "version": "1.3.7",
+  "versionCode": 10,
+  "filename": "TaroTora.apk",
+  "changelog": "优化终端交互体验：支持双指缩放禁用、终端内容滚动、长按选择文本；新增键盘按钮控制软键盘；新增调试信息显示开关",
+  "forceUpdate": false,
+  "updatedAt": "2026-04-10T14:37:00.000Z"
+}

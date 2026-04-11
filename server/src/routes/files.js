@@ -168,7 +168,7 @@ router.delete('/delete', async (req, res) => {
  */
 router.post('/rename', async (req, res) => {
   try {
-    const { oldPath, newName } = req.body;
+    const { path: oldPath, newName } = req.body;
     if (!oldPath || !newName) {
       return res.status(400).json({ error: 'Old path and new name are required' });
     }
@@ -241,5 +241,129 @@ router.get('/drives', async (req, res) => {
     });
   }
 });
+
+/**
+ * POST /api/files/compress
+ * 压缩文件或文件夹为zip
+ */
+router.post('/compress', async (req, res) => {
+  try {
+    const { source, destination } = req.body;
+    if (!source || !destination) {
+      return res.status(400).json({ error: 'Source and destination are required' });
+    }
+
+    const resolvedSource = path.resolve(source);
+    const resolvedDest = path.resolve(destination);
+
+    // 使用 PowerShell Compress-Archive 命令
+    const command = `powershell -command "Compress-Archive -Path '${resolvedSource}' -DestinationPath '${resolvedDest}' -Force"`;
+    await execPromise(command);
+
+    res.json({ success: true, path: resolvedDest });
+  } catch (error) {
+    console.error('Compress error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/files/extract
+ * 解压zip文件
+ */
+router.post('/extract', async (req, res) => {
+  try {
+    const { source, destination } = req.body;
+    if (!source || !destination) {
+      return res.status(400).json({ error: 'Source and destination are required' });
+    }
+
+    const resolvedSource = path.resolve(source);
+    const resolvedDest = path.resolve(destination);
+
+    // 使用 PowerShell Expand-Archive 命令
+    const command = `powershell -command "Expand-Archive -Path '${resolvedSource}' -DestinationPath '${resolvedDest}' -Force"`;
+    await execPromise(command);
+
+    res.json({ success: true, path: resolvedDest });
+  } catch (error) {
+    console.error('Extract error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;
+
+/**
+ * POST /api/files/copy
+ * 复制文件或文件夹
+ */
+router.post('/copy', async (req, res) => {
+  try {
+    const { source, destination } = req.body;
+    if (!source || !destination) {
+      return res.status(400).json({ error: 'Source and destination are required' });
+    }
+
+    const resolvedSource = path.resolve(source);
+    const resolvedDest = path.resolve(destination);
+
+    const stats = await fs.stat(resolvedSource);
+
+    if (stats.isDirectory()) {
+      // 递归复制目录
+      await copyDir(resolvedSource, resolvedDest);
+    } else {
+      // 复制文件
+      await fs.copyFile(resolvedSource, resolvedDest);
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/files/move
+ * 移动文件或文件夹
+ */
+router.post('/move', async (req, res) => {
+  try {
+    const { source, destination } = req.body;
+    if (!source || !destination) {
+      return res.status(400).json({ error: 'Source and destination are required' });
+    }
+
+    const resolvedSource = path.resolve(source);
+    const resolvedDest = path.resolve(destination);
+
+    await fs.rename(resolvedSource, resolvedDest);
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * 递归复制目录
+ */
+async function copyDir(src, dest) {
+  await fs.mkdir(dest, { recursive: true });
+  const entries = await fs.readdir(src, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      await copyDir(srcPath, destPath);
+    } else {
+      await fs.copyFile(srcPath, destPath);
+    }
+  }
+}
+
 
 module.exports = router;

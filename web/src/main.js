@@ -28,14 +28,24 @@ import FileManager from './views/FileManager.vue'
 import ProcessManager from './views/ProcessManager.vue'
 import Terminal from './views/Terminal.vue'
 import SystemMonitor from './views/SystemMonitor.vue'
+import Control from './views/Control.vue'
+import ProcessesMobile from './views/ProcessesMobile.vue'
+import FilesMobile from './views/FilesMobile.vue'
+import SettingsMobile from './views/SettingsMobile.vue'
+import ControlMobile from './views/ControlMobile.vue'
 
 const routes = [
   { path: '/login', component: Login },
   { path: '/', redirect: '/login' },
   { path: '/files', component: FileManager },
+  { path: '/files-mobile', component: FilesMobile },
   { path: '/processes', component: ProcessManager },
   { path: '/terminal', component: Terminal },
-  { path: '/monitor', component: SystemMonitor }
+  { path: '/monitor', component: SystemMonitor },
+  { path: '/control', component: Control },
+  { path: '/processes-mobile', component: ProcessesMobile },
+  { path: '/settings', component: SettingsMobile },
+  { path: '/control-mobile', component: ControlMobile }
 ]
 
 const router = createRouter({

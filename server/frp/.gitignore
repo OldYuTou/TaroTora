@@ -1,0 +1,10 @@
+# FRP 可执行文件（不应提交到 Git）
+frpc
+frpc.exe
+*.zip
+*.tar.gz
+*.tgz
+
+# FRP 配置文件（自动生成的临时文件）
+*.ini
+*.toml

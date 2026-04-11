@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:www.gnu.org)"
+      "WebFetch(domain:www.gnu.org)",
+      "Skill(baidu-netdisk)",
+      "WebSearch",
+      "WebFetch(domain:gist.github.com)"
     ]
   }
 }
