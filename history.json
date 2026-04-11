@@ -14,5 +14,15 @@
       "server: 临时端口启动健康检查",
       "socket: 验证错误 token 被拒绝、正确 token 收到 auth success、terminal-list 返回、通知推送成功"
     ]
+  },
+  {
+    "date": "2026-04-11",
+    "summary": "修复服务端从根目录启动时读取不到 server/.env 的问题",
+    "changes": [
+      "服务端入口显式按源码目录加载 server/.env，避免从仓库根目录启动时回退到 default-token"
+    ],
+    "verification": [
+      "server: node --check src/index.js"
+    ]
   }
 ]
