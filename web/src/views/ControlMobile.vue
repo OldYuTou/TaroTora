@@ -814,8 +814,11 @@ function requestTerminalList() {
 
 onMounted(() => {
   initSocket()
+  // 延迟检查待处理终端，确保 socket 已连接
+  setTimeout(() => {
+    checkPendingTerminal()
+  }, 500)
   loadExistingTerminals()
-  checkPendingTerminal()
   window.addEventListener('resize', handleResize)
   // 添加全局快捷键监听
   document.addEventListener('keydown', handleKeydown)
