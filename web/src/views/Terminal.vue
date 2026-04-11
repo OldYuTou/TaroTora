@@ -83,6 +83,10 @@ let socket = null
 
 const token = localStorage.getItem('auth_token') || 'REDACTED_TOKEN'
 
+// 检测是否为移动端
+const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window
+const isWindowsClient = navigator.platform?.toLowerCase().includes('win') || false
+
 function createTerminal() {
   if (term) {
     term.dispose()
@@ -90,7 +94,7 @@ function createTerminal() {
 
   term = new Terminal({
     cursorBlink: true,
-    fontSize: 14,
+    fontSize: isMobile ? 12 : 14,
     fontFamily: 'Consolas, "Courier New", monospace',
     theme: {
       background: '#0d1117',
@@ -114,8 +118,20 @@ function createTerminal() {
       brightCyan: '#56d4dd',
       brightWhite: '#f0f6fc'
     },
-    cols: 80,
-    rows: 24
+    cols: isMobile ? 40 : 80,
+    rows: isMobile ? 40 : 24,
+    scrollback: 10000,
+    smoothScroll: true,
+    allowTransparency: true,
+    cursorStyle: 'block',
+    // 移动端使用 DOM renderer 更稳定
+    rendererType: isMobile ? 'dom' : 'canvas',
+    // 禁用屏幕阅读器模式避免输入问题
+    screenReaderMode: false,
+    // 启用 windows 模式以更好地处理输入
+    windowsMode: isWindowsClient,
+    // 禁用装饰器避免渲染问题
+    overviewRulerWidth: 0
   })
 
   fitAddon = new FitAddon()
@@ -157,15 +173,92 @@ function connectSocket() {
 
     term.onData((data) => {
       socket.emit('terminal:input', data)
+      // 移动端输入后立即刷新，防止内容消失
+      if (isMobile) {
+        requestAnimationFrame(() => {
+          if (term) {
+            term.refresh(0, term.rows - 1)
+          }
+        })
+      }
     })
 
     term.onResize(({ cols, rows }) => {
       socket.emit('terminal:resize', { cols, rows })
     })
+
+    // 移动端触摸滚动支持
+    if (isMobile) {
+      setupTouchScrolling()
+    }
+
+    // 请求历史记录
+    socket.emit('terminal:history')
   })
 
+  // 接收历史记录
+  socket.on('terminal:history', ({ data }) => {
+    if (data && term) {
+      term.write(data)
+    }
+  })
+
+  let touchStartY = 0
+  let touchStartX = 0
+  let isTouchScrolling = false
+
+  function setupTouchScrolling() {
+    const viewport = terminalContainer.value?.querySelector('.xterm-viewport')
+    if (!viewport) return
+
+    viewport.addEventListener('touchstart', handleTouchStart, { passive: false })
+    viewport.addEventListener('touchmove', handleTouchMove, { passive: false })
+    viewport.addEventListener('touchend', handleTouchEnd, { passive: true })
+  }
+
+  function handleTouchStart(e) {
+    if (e.touches.length !== 1) return
+    touchStartY = e.touches[0].clientY
+    touchStartX = e.touches[0].clientX
+    isTouchScrolling = true
+  }
+
+  function handleTouchMove(e) {
+    if (!isTouchScrolling || e.touches.length !== 1) return
+
+    const touchY = e.touches[0].clientY
+    const touchX = e.touches[0].clientX
+    const deltaY = touchStartY - touchY
+    const deltaX = Math.abs(touchStartX - touchX)
+
+    // 如果垂直滑动距离大于水平滑动，认为是滚动操作
+    if (Math.abs(deltaY) > deltaX && Math.abs(deltaY) > 10) {
+      e.preventDefault()
+      e.stopPropagation()
+
+      // 计算滚动行数 (每 20 像素滚动一行)
+      const linesToScroll = Math.round(deltaY / 20)
+      if (linesToScroll !== 0 && term) {
+        term.scrollLines(linesToScroll)
+        touchStartY = touchY
+      }
+    }
+  }
+
+  function handleTouchEnd() {
+    isTouchScrolling = false
+  }
+
   socket.on('terminal:data', (data) => {
-    term.write(data)
+    if (term) {
+      term.write(data)
+      // 移动端输入后强制刷新，修复内容消失问题
+      if (isMobile) {
+        requestAnimationFrame(() => {
+          term.refresh(0, term.rows - 1)
+        })
+      }
+    }
   })
 
   socket.on('terminal:exit', ({ exitCode }) => {
@@ -204,24 +297,90 @@ function clearTerminal() {
   }
 }
 
+let resizeTimeout = null
+let lastViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight
+
 function handleResize() {
-  if (fitAddon) {
-    fitAddon.fit()
-    if (socket && connected.value) {
-      socket.emit('terminal:resize', {
-        cols: term.cols,
-        rows: term.rows
-      })
+  // 清除之前的定时器
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+  }
+
+  // 延迟处理，等待键盘动画完成
+  resizeTimeout = setTimeout(() => {
+    const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight
+    const viewportChanged = Math.abs(currentHeight - lastViewportHeight) > 50
+
+    if (fitAddon && term) {
+      // 如果是键盘弹出/收起，需要特殊处理
+      if (viewportChanged) {
+        lastViewportHeight = currentHeight
+
+        // 刷新终端以修复可能的渲染问题
+        term.refresh(0, term.rows - 1)
+
+        // 重新计算尺寸
+        fitAddon.fit()
+
+        // 通知服务端新的尺寸
+        if (socket && connected.value) {
+          socket.emit('terminal:resize', {
+            cols: term.cols,
+            rows: term.rows
+          })
+        }
+      } else {
+        // 普通 resize，直接 fit
+        fitAddon.fit()
+        if (socket && connected.value) {
+          socket.emit('terminal:resize', {
+            cols: term.cols,
+            rows: term.rows
+          })
+        }
+      }
     }
+  }, 300)
+}
+
+// 监听 Visual Viewport 变化（更准确地检测键盘弹出）
+function setupVisualViewportListener() {
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', handleResize)
+  }
+}
+
+function removeVisualViewportListener() {
+  if (window.visualViewport) {
+    window.visualViewport.removeEventListener('resize', handleResize)
+  }
+}
+
+function handleVisibilityChange() {
+  if (!document.hidden && term) {
+    // 页面重新可见时刷新终端
+    setTimeout(() => {
+      term.refresh(0, term.rows - 1)
+      if (fitAddon) {
+        fitAddon.fit()
+      }
+    }, 100)
   }
 }
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)
+  setupVisualViewportListener()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  removeVisualViewportListener()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+  }
   closeTerminal()
 })
 </script>
@@ -310,8 +469,22 @@ onUnmounted(() => {
   border: 1px solid #30363d;
   border-top: none;
   border-radius: 0 0 12px 12px;
-  overflow: hidden;
+  overflow: auto;
   padding: 10px;
+}
+
+:deep(.xterm-viewport) {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  background-color: #0d1117 !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  width: 100% !important;
+}
+
+:deep(.xterm-screen) {
+  touch-action: pan-y;
+  width: 100% !important;
 }
 
 .terminal-placeholder {
@@ -338,17 +511,16 @@ onUnmounted(() => {
   height: 100%;
 }
 
-:deep(.xterm-viewport) {
-  background-color: #0d1117 !important;
-}
-
 @media (max-width: 768px) {
   .terminal-page {
     padding: 12px;
+    height: 100vh;
+    overflow: hidden;
   }
 
   .toolbar {
     padding: 12px;
+    flex-shrink: 0;
   }
 
   .tool-btn span {
@@ -357,6 +529,28 @@ onUnmounted(() => {
 
   .terminal-info {
     display: none;
+  }
+
+  .terminal-container {
+    overflow: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  :deep(.xterm) {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  :deep(.xterm-viewport) {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  :deep(.xterm-screen) {
+    height: auto !important;
+    min-height: 100%;
   }
 }
 </style>

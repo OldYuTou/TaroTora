@@ -282,6 +282,8 @@ function terminalSocket(socket) {
   // ========== 旧版单终端API（向后兼容）==========
 
   let legacyPtyProcess = null;
+  let legacyOutputBuffer = []; // 历史记录缓存
+  const MAX_BUFFER_SIZE = 100 * 1024; // 最大缓存 100KB
 
   // 创建新终端会话（旧版API）
   socket.on('terminal:create', (options = {}) => {
@@ -304,8 +306,15 @@ function terminalSocket(socket) {
         useConpty: process.platform === 'win32'
       });
 
-      // 转发 PTY 输出到客户端
+      // 转发 PTY 输出到客户端并缓存
       legacyPtyProcess.onData((data) => {
+        // 缓存输出
+        legacyOutputBuffer.push(data);
+        // 限制缓存大小
+        let totalSize = legacyOutputBuffer.reduce((sum, chunk) => sum + chunk.length, 0);
+        while (totalSize > MAX_BUFFER_SIZE && legacyOutputBuffer.length > 0) {
+          totalSize -= legacyOutputBuffer.shift().length;
+        }
         socket.emit('terminal:data', data);
       });
 
@@ -313,6 +322,7 @@ function terminalSocket(socket) {
       legacyPtyProcess.onExit(({ exitCode, signal }) => {
         socket.emit('terminal:exit', { exitCode, signal });
         legacyPtyProcess = null;
+        legacyOutputBuffer = []; // 清空缓存
       });
 
       // 通知客户端终端已就绪
@@ -326,6 +336,17 @@ function terminalSocket(socket) {
     } catch (error) {
       socket.emit('terminal:error', error.message);
     }
+  });
+
+  // 获取终端历史记录（旧版API）
+  socket.on('terminal:history', () => {
+    if (!isAuthenticated) {
+      socket.emit('terminal:error', 'Not authenticated');
+      return;
+    }
+
+    const history = legacyOutputBuffer.join('');
+    socket.emit('terminal:history', { data: history });
   });
 
   // 接收客户端输入（旧版API）

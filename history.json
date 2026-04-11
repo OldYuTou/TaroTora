@@ -115,5 +115,66 @@
       "确认 docs/postmortems/2026-04-11-apk-websocket.md 包含现象、根因、修复、验证和后续注意",
       "node JSON 解析检查 history.json 通过"
     ]
+  },
+  {
+    "date": "2026-04-11",
+    "summary": "优化移动端控制页终端触摸交互",
+    "changes": [
+      "移动端终端默认保持浏览模式，使用竖向拖动滚动终端回看内容",
+      "新增双击终端唤起隐藏输入框和软键盘的输入方式，保留工具栏键盘按钮作为显式入口",
+      "新增横向拖动转发 xterm 选择事件，用于选中终端文本",
+      "新增长按终端弹出复制选中内容和粘贴到终端菜单",
+      "将版本提升到 1.4.0、Android versionCode 提升到 12，并重建同步 APK 与服务端静态资源"
+    ],
+    "verification": [
+      "web: npm run build",
+      "web: npm run cap:sync",
+      "android: .\\gradlew.bat assembleDebug",
+      "android: .\\gradlew.bat assembleRelease",
+      "APK: aapt 确认 versionCode=12、versionName=1.4.0",
+      "APK: jar tf 确认包含 assets/public/assets/index-42d7a8f7.js",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，debug 包 v1/v2 签名通过",
+      "https://REDACTED_DOMAIN 加载最新静态资源 index-42d7a8f7.js",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.0、versionCode=12",
+      "ADB 安装未执行：当前 adb devices -l 未发现已连接设备"
+    ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "启动电脑端服务并验证本地与公网连通",
+    "changes": [
+      "在 server 目录启动 node src/index.js，监听 3000 端口",
+      "确认 FRP 客户端随服务启动并连接到 REDACTED_IP:REDACTED_PORT"
+    ],
+    "verification": [
+      "http://127.0.0.1:3000/health 返回 status=ok",
+      "带 AUTH_TOKEN 请求 http://127.0.0.1:3000/api/system/info 成功",
+      "Socket.IO 本地 websocket 握手返回 SOCKET_OK transport=websocket",
+      "https://REDACTED_DOMAIN/health 返回 status=ok",
+      "服务进程 PID 为 28712"
+    ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "修复移动端终端输入后视图消失问题",
+    "changes": [
+      "将移动端终端隐藏输入框从屏幕外 bottom:-1000px 改为视口内 1px 固定定位，避免 Android WebView 在首次输入时自动滚动页面导致终端区域离开可视区",
+      "在唤起键盘、输入文本、中文组合输入结束、终端输出和 visualViewport 尺寸变化后主动刷新 xterm，并在键盘尺寸变化时重新 fit 当前终端",
+      "修正旧版终端页移动端 Windows 检测逻辑，避免浏览器端访问 process.platform；修正旧版终端历史缓存裁剪逻辑，避免超过上限时清空全部缓存",
+      "将版本同步到 1.4.1、Android versionCode 同步到 1987654，重建 debug/release APK 并同步 server/apk 与 server/public 静态资源"
+    ],
+    "verification": [
+      "web: npm run build 通过",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987654、versionName=1.4.1",
+      "APK: jar tf 确认包含 assets/public/assets/index-d518c979.js 和 index-c8e4bedc.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书 SHA-256 为 REDACTED_RELEASE_FINGERPRINT",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.1、versionCode=1987654",
+      "https://REDACTED_DOMAIN 首页加载 index-d518c979.js 和 index-c8e4bedc.css",
+      "重启 3000 端口服务后，本地 http://127.0.0.1:3000/health 返回 status=ok，新服务进程 PID 为 26204",
+      "ADB 安装未执行：当前 adb devices -l 未发现已连接设备"
+    ]
   }
 ]

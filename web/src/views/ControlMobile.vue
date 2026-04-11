@@ -58,10 +58,32 @@
           </div>
           <div class="terminal-body">
             <div :ref="el => setTerminalRef(el, index)" class="xterm-container"></div>
-            <!-- 透明覆盖层：阻止点击直达 xterm 内部的 textarea，但允许滚动和选择 -->
+            <textarea
+              :ref="el => setInputRef(el, index)"
+              class="mobile-input"
+              rows="1"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              inputmode="text"
+              enterkeyhint="enter"
+              @input="handleMobileInput($event, index)"
+              @compositionstart="handleCompositionStart(index)"
+              @compositionend="handleCompositionEnd($event, index)"
+              @keydown="handleMobileKeydown($event, index)"
+              @keyup="handleMobileKeyup($event, index)"
+              @blur="handleMobileInputBlur"
+            ></textarea>
+            <!-- 透明覆盖层：默认浏览，双击唤起键盘，长按显示复制/粘贴菜单 -->
             <div
               class="terminal-overlay"
-              @touchstart.passive="handleTerminalTouch(index)"
+              @touchstart="handleTerminalTouchStart($event, index)"
+              @touchmove="handleTerminalTouchMove"
+              @touchend="handleTerminalTouchEnd"
+              @touchcancel="clearTerminalTouch"
+              @dblclick.prevent="focusTerminalInput(index)"
+              @contextmenu.prevent="handleTerminalContextMenu($event, index)"
               @mousedown.prevent
             ></div>
           </div>
@@ -77,7 +99,7 @@
           </svg>
           <span>新建终端</span>
         </button>
-        <button class="tool-btn mode-toggle" :class="{ active: inputMode }" @click="toggleInputMode">
+        <button class="tool-btn mode-toggle" :class="{ active: inputMode }" @click="focusTerminalInput(activeTerminalIndex)">
           <svg v-if="inputMode" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
             <line x1="6" y1="8" x2="6" y2="8"></line>
@@ -97,8 +119,27 @@
             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
             <circle cx="12" cy="12" r="3"></circle>
           </svg>
-          <span>{{ inputMode ? '输入' : '浏览' }}</span>
+          <span>{{ inputMode ? '输入中' : '键盘' }}</span>
         </button>
+      </div>
+
+      <div v-if="terminalContextMenu.visible" class="terminal-context-backdrop" @click="hideTerminalContextMenu">
+        <div
+          class="terminal-context-menu"
+          :style="{ left: `${terminalContextMenu.x}px`, top: `${terminalContextMenu.y}px` }"
+          @click.stop
+        >
+          <button
+            class="terminal-context-item"
+            :disabled="!terminalContextMenu.canCopy"
+            @click="copyTerminalSelection"
+          >
+            复制选中内容
+          </button>
+          <button class="terminal-context-item" @click="pasteClipboardToTerminal">
+            粘贴到终端
+          </button>
+        </div>
       </div>
     </template>
 
@@ -167,6 +208,22 @@ const activeTerminalIndex = ref(0)
 const tabsRef = ref(null)
 const terminalRefs = ref([])
 const inputRefs = ref([])
+const terminalContextMenu = ref({
+  visible: false,
+  x: 0,
+  y: 0,
+  index: -1,
+  canCopy: false
+})
+
+const DOUBLE_TAP_DELAY = 320
+const TAP_MOVE_LIMIT = 18
+const GESTURE_THRESHOLD = 8
+const LONG_PRESS_DELAY = 550
+
+let terminalTouchState = null
+let longPressTimer = null
+let lastTerminalTap = null
 
 // 调试信息
 const debugInfo = ref([])
@@ -187,6 +244,22 @@ function addDebug(text, type = 'info') {
 // 清除调试信息
 function clearDebug() {
   debugInfo.value = []
+}
+
+function showToast(message) {
+  const toast = document.createElement('div')
+  toast.className = 'terminal-toast'
+  toast.textContent = message
+  document.body.appendChild(toast)
+  setTimeout(() => toast.classList.add('show'), 10)
+  setTimeout(() => {
+    toast.classList.remove('show')
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast)
+      }
+    }, 300)
+  }, 1800)
 }
 
 // 对话框
@@ -225,50 +298,307 @@ function setInputRef(el, index) {
   }
 }
 
-// 切换输入/浏览模式
-function toggleInputMode() {
-  inputMode.value = !inputMode.value
-
-  // 更新所有终端的覆盖层状态
-  nextTick(() => {
-    terminals.value.forEach((_, index) => {
-      updateOverlayState(index)
-    })
-  })
-
-  showToast(inputMode.value ? '输入模式：点击终端可唤起键盘' : '浏览模式：可自由滚动和选择文本')
+function getTerminalInstance(index = activeTerminalIndex.value) {
+  const terminal = terminals.value[index]
+  if (!terminal) return null
+  return termInstances.find(t => t.id === terminal.id) || termInstances[index] || null
 }
 
-// 更新覆盖层状态
-function updateOverlayState(index) {
-  const container = terminalRefs.value[index]
-  if (!container) return
+function getTerminalViewport(index) {
+  return terminalRefs.value[index]?.querySelector('.xterm-viewport') || null
+}
 
-  const panel = container.closest('.terminal-panel')
-  if (!panel) return
+function getTerminalScreen(index) {
+  return terminalRefs.value[index]?.querySelector('.xterm-screen') || terminalRefs.value[index] || null
+}
 
-  const overlay = panel.querySelector('.terminal-overlay')
-  if (!overlay) return
+function refreshTerminalViewport(index = activeTerminalIndex.value, shouldFit = false) {
+  const term = getTerminalInstance(index)
+  if (!term) return
 
-  if (inputMode.value) {
-    // 输入模式：隐藏覆盖层，允许点击直达 textarea
-    overlay.style.pointerEvents = 'none'
-    overlay.style.display = 'none'
-  } else {
-    // 浏览模式：显示覆盖层，阻止点击唤起键盘
-    overlay.style.pointerEvents = 'auto'
-    overlay.style.display = 'block'
+  requestAnimationFrame(() => {
+    if (shouldFit) {
+      term.fitAddon?.fit()
+    }
+    term.xterm?.refresh?.(0, term.xterm.rows - 1)
+  })
+}
+
+function clearLongPressTimer() {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer)
+    longPressTimer = null
   }
 }
 
-// 处理终端区域触摸
-function handleTerminalTouch(index) {
-  // 在输入模式下，不阻止事件，允许唤起键盘
-  // 在浏览模式下，覆盖层会阻止事件
+function getDistance(a, b) {
+  if (!a || !b) return Number.POSITIVE_INFINITY
+  return Math.hypot(a.x - b.x, a.y - b.y)
+}
+
+function focusTerminalInput(index = activeTerminalIndex.value) {
+  hideTerminalContextMenu()
+  const input = inputRefs.value[index]
+  if (!input) return
+
+  inputMode.value = true
+  input.value = ''
+  inputBuffers.value[index] = ''
+
+  nextTick(() => {
+    window.scrollTo?.(0, 0)
+    input.focus({ preventScroll: true })
+    refreshTerminalViewport(index, true)
+    addDebug('已唤起终端键盘')
+  })
+}
+
+function handleMobileInputBlur() {
+  inputMode.value = false
+}
+
+// 保持覆盖层常驻：浏览、滚动和选择都经过覆盖层手势处理，输入通过双击或键盘按钮触发。
+function updateOverlayState(index) {
+  const container = terminalRefs.value[index]
+  const panel = container?.closest('.terminal-panel')
+  const overlay = panel?.querySelector('.terminal-overlay')
+  if (!overlay) return
+
+  overlay.style.pointerEvents = 'auto'
+  overlay.style.display = 'block'
+}
+
+function forwardMouseToTerminal(type, point, index, buttons = 1) {
+  const target = getTerminalScreen(index)
+  if (!target || !point) return
+
+  target.dispatchEvent(new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    view: window,
+    clientX: point.clientX,
+    clientY: point.clientY,
+    screenX: point.screenX,
+    screenY: point.screenY,
+    button: 0,
+    buttons
+  }))
+}
+
+function startTerminalSelection(index, touch) {
+  if (!terminalTouchState || terminalTouchState.selectionStarted) return
+  terminalTouchState.selectionStarted = true
+  forwardMouseToTerminal('mousedown', terminalTouchState.startPoint, index, 1)
+  forwardMouseToTerminal('mousemove', touch, index, 1)
+}
+
+function showTerminalContextMenu(index, x, y) {
+  clearLongPressTimer()
+  const term = getTerminalInstance(index)
+  const hasSelection = Boolean(term?.xterm?.hasSelection?.() && term.xterm.getSelection())
+  const menuWidth = 160
+  const menuHeight = 96
+
+  terminalContextMenu.value = {
+    visible: true,
+    x: Math.max(8, Math.min(x, window.innerWidth - menuWidth - 8)),
+    y: Math.max(8, Math.min(y, window.innerHeight - menuHeight - 8)),
+    index,
+    canCopy: hasSelection
+  }
+
+  navigator.vibrate?.(15)
+}
+
+function hideTerminalContextMenu() {
+  terminalContextMenu.value.visible = false
+}
+
+function handleTerminalContextMenu(event, index) {
+  event.preventDefault()
+  showTerminalContextMenu(index, event.clientX, event.clientY)
+}
+
+function handleTerminalTouchStart(event, index) {
+  if (event.touches.length !== 1) {
+    clearTerminalTouch()
+    return
+  }
+
+  hideTerminalContextMenu()
+
+  const touch = event.touches[0]
+  const now = Date.now()
+  const tapPoint = { x: touch.clientX, y: touch.clientY }
+  const isDoubleTap = lastTerminalTap &&
+    lastTerminalTap.index === index &&
+    now - lastTerminalTap.time <= DOUBLE_TAP_DELAY &&
+    getDistance(tapPoint, lastTerminalTap) <= TAP_MOVE_LIMIT
+
+  terminalTouchState = {
+    index,
+    startPoint: {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      screenX: touch.screenX,
+      screenY: touch.screenY
+    },
+    lastPoint: {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      screenX: touch.screenX,
+      screenY: touch.screenY
+    },
+    gesture: isDoubleTap ? 'input' : null,
+    selectionStarted: false,
+    longPressTriggered: false
+  }
+
+  if (isDoubleTap) {
+    clearLongPressTimer()
+    focusTerminalInput(index)
+    lastTerminalTap = null
+    event.preventDefault()
+    return
+  }
+
+  clearLongPressTimer()
+  longPressTimer = setTimeout(() => {
+    if (!terminalTouchState || terminalTouchState.gesture) return
+    terminalTouchState.longPressTriggered = true
+    terminalTouchState.gesture = 'context'
+    showTerminalContextMenu(index, touch.clientX, touch.clientY)
+  }, LONG_PRESS_DELAY)
+}
+
+function handleTerminalTouchMove(event) {
+  if (!terminalTouchState || event.touches.length !== 1) return
+
+  const touch = event.touches[0]
+  const dx = touch.clientX - terminalTouchState.startPoint.clientX
+  const dy = touch.clientY - terminalTouchState.startPoint.clientY
+
+  if (Math.abs(dx) > TAP_MOVE_LIMIT || Math.abs(dy) > TAP_MOVE_LIMIT) {
+    clearLongPressTimer()
+  }
+
+  if (!terminalTouchState.gesture && Math.max(Math.abs(dx), Math.abs(dy)) > GESTURE_THRESHOLD) {
+    terminalTouchState.gesture = Math.abs(dy) >= Math.abs(dx) ? 'scroll' : 'select'
+  }
+
+  if (terminalTouchState.gesture === 'scroll') {
+    const viewport = getTerminalViewport(terminalTouchState.index)
+    if (viewport) {
+      viewport.scrollTop -= touch.clientY - terminalTouchState.lastPoint.clientY
+    }
+    event.preventDefault()
+  } else if (terminalTouchState.gesture === 'select') {
+    startTerminalSelection(terminalTouchState.index, touch)
+    forwardMouseToTerminal('mousemove', touch, terminalTouchState.index, 1)
+    event.preventDefault()
+  }
+
+  terminalTouchState.lastPoint = {
+    clientX: touch.clientX,
+    clientY: touch.clientY,
+    screenX: touch.screenX,
+    screenY: touch.screenY
+  }
+}
+
+function handleTerminalTouchEnd(event) {
+  clearLongPressTimer()
+
+  if (!terminalTouchState) return
+
+  const state = terminalTouchState
+  if (state.gesture === 'input') {
+    focusTerminalInput(state.index)
+    event.preventDefault()
+  } else if (state.gesture === 'select' && state.selectionStarted) {
+    forwardMouseToTerminal('mouseup', state.lastPoint, state.index, 0)
+    event.preventDefault()
+  } else if (!state.gesture && !state.longPressTriggered) {
+    lastTerminalTap = {
+      index: state.index,
+      time: Date.now(),
+      x: state.startPoint.clientX,
+      y: state.startPoint.clientY
+    }
+  }
+
+  terminalTouchState = null
+}
+
+function clearTerminalTouch() {
+  clearLongPressTimer()
+  if (terminalTouchState?.gesture === 'select' && terminalTouchState.selectionStarted) {
+    forwardMouseToTerminal('mouseup', terminalTouchState.lastPoint, terminalTouchState.index, 0)
+  }
+  terminalTouchState = null
+}
+
+async function copyTerminalSelection() {
+  const index = terminalContextMenu.value.index
+  const selection = getTerminalInstance(index)?.xterm?.getSelection?.() || ''
+
+  if (!selection) {
+    showToast('没有选中的终端文本')
+    hideTerminalContextMenu()
+    return
+  }
+
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(selection)
+    } else {
+      const textarea = document.createElement('textarea')
+      textarea.value = selection
+      textarea.style.position = 'fixed'
+      textarea.style.left = '-9999px'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+    showToast('已复制选中内容')
+  } catch (error) {
+    showToast('复制失败: ' + error.message)
+  } finally {
+    hideTerminalContextMenu()
+  }
+}
+
+async function pasteClipboardToTerminal() {
+  const index = terminalContextMenu.value.index
+  try {
+    let text = ''
+    if (navigator.clipboard?.readText) {
+      text = await navigator.clipboard.readText()
+    } else {
+      text = prompt('请输入要粘贴到终端的文本') || ''
+    }
+
+    if (text) {
+      sendInputToTerminal(index, text)
+      showToast('已粘贴到终端')
+    }
+  } catch (error) {
+    const text = prompt('无法读取系统剪贴板，请手动粘贴文本') || ''
+    if (text) {
+      sendInputToTerminal(index, text)
+      showToast('已粘贴到终端')
+    } else {
+      showToast('粘贴失败: ' + error.message)
+    }
+  } finally {
+    hideTerminalContextMenu()
+  }
 }
 
 // 跟踪输入状态
 const inputBuffers = ref([])
+const composingInputs = ref([])
 
 // 调试信息显示开关
 const showDebug = ref(false)
@@ -284,42 +614,42 @@ function loadDebugSetting() {
 
 // 处理移动端输入
 function handleMobileInput(event, index) {
-  const term = termInstances[index]
   const textarea = event.target
-  if (!term || !textarea) return
+  if (!getTerminalInstance(index) || !textarea || composingInputs.value[index]) return
 
   const value = textarea.value
-  const buffer = inputBuffers[index] || ''
-
-  // 计算新增的内容
-  if (value.length > buffer.length) {
-    const newChars = value.slice(buffer.length)
-    // 直接发送到后端，不在本地显示
-    sendInputToTerminal(index, newChars)
+  if (value) {
+    sendInputToTerminal(index, value)
   }
 
-  // 更新缓冲区
-  inputBuffers[index] = value
+  textarea.value = ''
+  inputBuffers.value[index] = ''
+  refreshTerminalViewport(index)
+}
+
+function handleCompositionStart(index) {
+  composingInputs.value[index] = true
 }
 
 // 处理组合输入结束（如中文输入法）
 function handleCompositionEnd(event, index) {
-  const term = termInstances[index]
-  if (!term) return
+  if (!getTerminalInstance(index)) return
 
-  const data = event.data
+  composingInputs.value[index] = false
+  const data = event.target.value || event.data
   if (data) {
     sendInputToTerminal(index, data)
   }
 
   // 清空输入框和缓冲区
   event.target.value = ''
-  inputBuffers[index] = ''
+  inputBuffers.value[index] = ''
+  refreshTerminalViewport(index)
 }
 
 // 处理按键按下
 function handleMobileKeydown(event, index) {
-  const term = termInstances[index]
+  const term = getTerminalInstance(index)
   if (!term) return
 
   const key = event.key
@@ -384,13 +714,13 @@ function handleMobileKeyup(event, index) {
   const textarea = event.target
   // 如果输入框被清空（如回车后），重置缓冲区
   if (textarea.value === '') {
-    inputBuffers[index] = ''
+    inputBuffers.value[index] = ''
   }
 }
 
 // 发送输入到终端
 function sendInputToTerminal(index, data) {
-  const termInstance = termInstances[index]
+  const termInstance = getTerminalInstance(index)
   if (!termInstance) return
 
   const terminalId = termInstance.id
@@ -457,6 +787,10 @@ function initSocket() {
       const term = termInstances.find(t => t.id === data.terminalId)
       if (term) {
         term.xterm.write(data.data)
+        if (inputMode.value) {
+          const index = terminals.value.findIndex(t => t.id === data.terminalId)
+          refreshTerminalViewport(index)
+        }
       }
     })
 
@@ -756,7 +1090,12 @@ function handleResize() {
   const term = termInstances[activeTerminalIndex.value]
   if (term) {
     term.fitAddon.fit()
+    term.xterm.refresh(0, term.xterm.rows - 1)
   }
+}
+
+function handleVisualViewportResize() {
+  refreshTerminalViewport(activeTerminalIndex.value, true)
 }
 
 // 加载已存在的终端列表
@@ -821,6 +1160,7 @@ onMounted(() => {
   }, 500)
   loadExistingTerminals()
   window.addEventListener('resize', handleResize)
+  window.visualViewport?.addEventListener('resize', handleVisualViewportResize)
   // 添加全局快捷键监听
   document.addEventListener('keydown', handleKeydown)
   // 加载调试设置
@@ -828,7 +1168,10 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  clearTerminalTouch()
+  hideTerminalContextMenu()
   window.removeEventListener('resize', handleResize)
+  window.visualViewport?.removeEventListener('resize', handleVisualViewportResize)
   document.removeEventListener('keydown', handleKeydown)
   // 离开页面时只销毁 xterm 实例，不断开服务器终端连接
   // 这样用户重新进入时可以恢复终端
@@ -1020,19 +1363,20 @@ onUnmounted(() => {
 
 /* 移动端输入框 - 默认完全隐藏，点击键盘按钮时临时显示 */
 .mobile-input {
-  position: absolute;
-  bottom: -1000px; /* 移出屏幕 */
+  position: fixed;
+  bottom: 0;
   left: 0;
-  width: 100%;
+  width: 1px;
   height: 1px;
-  opacity: 0;
+  opacity: 0.01;
   background: transparent;
   border: none;
   color: transparent;
   caret-color: transparent;
-  z-index: -1;
+  z-index: 1;
   resize: none;
   pointer-events: none;
+  transform: translateZ(0);
 }
 
 .mobile-input:focus {
@@ -1215,9 +1559,48 @@ onUnmounted(() => {
   bottom: 0;
   background: transparent;
   z-index: 5;
-  touch-action: pan-y;
-  user-select: text;
-  -webkit-user-select: text;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.terminal-context-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: transparent;
+}
+
+.terminal-context-menu {
+  position: fixed;
+  min-width: 160px;
+  overflow: hidden;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.terminal-context-item {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  background: transparent;
+  color: #c9d1d9;
+  font-size: 14px;
+  text-align: left;
+}
+
+.terminal-context-item:active {
+  background: #21262d;
+  color: #58a6ff;
+}
+
+.terminal-context-item:disabled {
+  color: #6e7681;
+  opacity: 0.55;
 }
 
 /* xterm 样式覆盖 */
@@ -1235,25 +1618,50 @@ onUnmounted(() => {
   width: 100% !important;
   background: #0d1117 !important;
   overflow-y: auto !important;
-}:deep(.xterm .xterm-screen canvas) {
+}
+
+:deep(.xterm .xterm-screen canvas) {
   width: 100% !important;
+}
+
+:global(.terminal-toast) {
+  position: fixed;
+  left: 50%;
+  bottom: 128px;
+  z-index: 2500;
+  max-width: calc(100vw - 40px);
+  padding: 10px 16px;
+  background: rgba(22, 27, 34, 0.96);
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #f0f6fc;
+  font-size: 13px;
+  opacity: 0;
+  transform: translate(-50%, 12px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+:global(.terminal-toast.show) {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 /* 移动端输入框 - 默认完全隐藏，点击键盘按钮时临时显示 */
 .mobile-input {
-  position: absolute;
-  bottom: -1000px;
+  position: fixed;
+  bottom: 0;
   left: 0;
-  width: 100%;
+  width: 1px;
   height: 1px;
-  opacity: 0;
+  opacity: 0.01;
   background: transparent;
   border: none;
   color: transparent;
   caret-color: transparent;
-  z-index: -1;
+  z-index: 1;
   resize: none;
   pointer-events: none;
+  transform: translateZ(0);
 }
 
 .mobile-input:focus {
