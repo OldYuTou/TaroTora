@@ -52,5 +52,26 @@
       "https://REDACTED_DOMAIN 加载最新静态资源 index-df9c34b9.js",
       "Socket.IO: https://REDACTED_DOMAIN websocket 握手通过"
     ]
+  },
+  {
+    "date": "2026-04-11",
+    "summary": "重建包含公网登录和 Socket 修复的 Android APK",
+    "changes": [
+      "将 Web 端版本提升到 1.3.9，并将 Android versionCode 提升到 11",
+      "执行前端构建和 Capacitor 同步，使 Android APK 内置最新 index-9dd3cfb0.js 资源",
+      "新增 APK 原生环境的服务器地址规范化逻辑，自动将 localhost 或 HTTP 公网缓存纠正为 https://REDACTED_DOMAIN",
+      "修复 Android Cordova 子项目 Gradle 仓库与 Build Tools 配置，避免构建时依赖 Google SDK 下载失败",
+      "生成正式签名 APK 并同步到 server/apk/TaroTora.apk，同时保留 debug 签名包 TaroTora-debug-v11.apk",
+      "同步最新 web/dist 到 server/public，避免公网 Web 端继续加载旧静态资源"
+    ],
+    "verification": [
+      "web: npm run build",
+      "web: npm run cap:sync",
+      "android: .\\gradlew.bat assembleDebug",
+      "android: .\\gradlew.bat assembleRelease",
+      "APK: aapt 确认 versionCode=11、versionName=1.3.9",
+      "APK: jar tf 确认包含 assets/public/assets/index-9dd3cfb0.js",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书与旧正式包一致"
+    ]
   }
 ]

@@ -30,7 +30,7 @@
           </div>
           <h1>TaroTora</h1>
           <p class="subtitle">Remote Control System</p>
-          <span class="version-badge">v1.1.0</span>
+          <span class="version-badge">v1.3.9</span>
         </div>
 
         <form class="login-form" @submit.prevent="handleLogin">
@@ -124,37 +124,12 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { io } from 'socket.io-client'
 import axios from 'axios'
+import { getDefaultServerUrl, normalizeServerUrl } from '../utils/serverUrl'
 
 const router = useRouter()
 const loading = ref(false)
 const showToken = ref(false)
 const error = ref('')
-
-function getDefaultServerUrl() {
-  const host = window.location.hostname
-  const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === ''
-
-  if ((window.location.protocol === 'http:' || window.location.protocol === 'https:') && !isLocalHost) {
-    return window.location.origin
-  }
-
-  return ''
-}
-
-function normalizeServerUrl(server) {
-  const trimmed = server.trim().replace(/\/+$/, '')
-  if (!trimmed) return ''
-
-  const withProtocol = /^https?:\/\//i.test(trimmed)
-    ? trimmed
-    : `${window.location.protocol === 'https:' ? 'https' : 'http'}://${trimmed}`
-
-  if (window.location.protocol === 'https:' && withProtocol.startsWith('http://')) {
-    return getDefaultServerUrl()
-  }
-
-  return withProtocol
-}
 
 const storedServer = localStorage.getItem('server_url') || ''
 

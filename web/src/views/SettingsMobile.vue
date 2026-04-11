@@ -278,7 +278,7 @@ import axios from 'axios'
 const router = useRouter()
 
 // 当前版本号
-const currentVersion = ref('1.3.8')
+const currentVersion = ref('1.3.9')
 const latestVersion = ref('')
 const hasUpdate = ref(false)
 const checking = ref(false)

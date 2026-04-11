@@ -1,8 +1,8 @@
 {
-  "version": "1.3.7",
-  "versionCode": 10,
+  "version": "1.3.9",
+  "versionCode": 11,
   "filename": "TaroTora.apk",
-  "changelog": "优化终端交互体验：支持双指缩放禁用、终端内容滚动、长按选择文本；新增键盘按钮控制软键盘；新增调试信息显示开关",
+  "changelog": "修复 HTTPS 公网页面和 APK 内旧资源导致的 WebSocket 连接失败；APK 自动纠正本机缓存地址到公网域名；同步 Socket.IO 握手认证和最新前端资源",
   "forceUpdate": false,
-  "updatedAt": "2026-04-10T14:37:00.000Z"
+  "updatedAt": "2026-04-11T16:32:49.281+08:00"
 }

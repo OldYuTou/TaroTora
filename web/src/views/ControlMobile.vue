@@ -159,6 +159,7 @@ import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
+import { getDefaultServerUrl, normalizeServerUrl } from '../utils/serverUrl'
 
 // 终端列表
 const terminals = ref([])
@@ -402,7 +403,7 @@ function sendInputToTerminal(index, data) {
 
 // 初始化 Socket 连接
 function initSocket() {
-  const serverUrl = localStorage.getItem('server_url') || window.location.origin
+  const serverUrl = normalizeServerUrl(localStorage.getItem('server_url') || '') || getDefaultServerUrl()
   const token = localStorage.getItem('auth_token') || 'REDACTED_TOKEN'
 
   addDebug('初始化 Socket, URL: ' + serverUrl)

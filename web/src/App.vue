@@ -133,6 +133,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { io } from 'socket.io-client'
 import axios from 'axios'
+import { normalizeServerUrl } from './utils/serverUrl'
 
 const router = useRouter()
 const route = useRoute()
@@ -241,9 +242,10 @@ function removeNotification(id) {
 
 function connectSocket() {
   const token = localStorage.getItem('auth_token')
-  const serverUrl = localStorage.getItem('server_url')
+  const serverUrl = normalizeServerUrl(localStorage.getItem('server_url') || '')
 
   if (!token || !serverUrl) return
+  localStorage.setItem('server_url', serverUrl)
 
   if (window.controlSocket?.connected) {
     connected.value = true
@@ -291,7 +293,7 @@ function connectSocket() {
 
 function checkAuth() {
   const token = localStorage.getItem('auth_token')
-  let serverUrl = localStorage.getItem('server_url')
+  let serverUrl = normalizeServerUrl(localStorage.getItem('server_url') || '')
 
   if (!token || !serverUrl) {
     if (route.path !== '/login') {
