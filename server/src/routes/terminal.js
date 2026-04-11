@@ -22,6 +22,7 @@
  */
 
 const pty = require('node-pty');
+const fs = require('fs');
 const os = require('os');
 
 // 存储所有持久化终端会话 - key: terminalId
@@ -42,7 +43,17 @@ const socketTerminals = new Map();
 async function createOrResumeTerminal(socket, terminalId, options = {}) {
   const { cwd, cols = 80, rows = 24 } = options;
   const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
-  const workingDir = cwd || os.homedir();
+
+  // 检查路径是否存在，不存在则使用 home 目录
+  let workingDir = cwd || os.homedir();
+  if (cwd) {
+    try {
+      fs.accessSync(cwd, fs.constants.F_OK);
+    } catch (err) {
+      console.log(`[Terminal] Path not found: ${cwd}, falling back to home directory`);
+      workingDir = os.homedir();
+    }
+  }
 
   // 检查是否已存在该终端
   const existingSession = persistentSessions.get(terminalId);
