@@ -89,5 +89,17 @@
       "adb shell pidof com.tarotora.remotecontrol 返回运行中进程",
       "adb logcat 最近日志未发现 FATAL EXCEPTION"
     ]
+  },
+  {
+    "date": "2026-04-11",
+    "summary": "新增 Claude 项目工作指南和问题复盘文档",
+    "changes": [
+      "创建 CLAUDE.md，记录 APK WebSocket 连接失败的根因、修复内容和验证结果",
+      "补充 Claude 在本项目中的工作约束，包括中文沟通、主动超时监控、Git 提交、history.json 更新和 APK 签名注意事项"
+    ],
+    "verification": [
+      "确认 CLAUDE.md 已创建并包含 Git commit、history.json、自测和 APK 安装相关规范",
+      "node JSON 解析检查 history.json 通过"
+    ]
   }
 ]
