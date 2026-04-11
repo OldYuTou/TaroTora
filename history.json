@@ -227,5 +227,28 @@
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.2.apk 返回上传成功，bdpan ls 确认远端文件存在",
       "ADB 安装未执行：当前 adb devices -l 未发现已连接设备"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "优化移动端终端浏览拖动手感",
+    "changes": [
+      "将移动端终端触摸滚动方向调整为手指上推滚到更早历史，符合用户对“往上拖”的操作预期",
+      "将触摸滚动灵敏度提升到 2.5 倍，减少需要反复拖动的次数",
+      "在 xterm-container 上增加触摸滚动兜底监听，避免浏览模式下 overlay 事件命中不稳定导致无法拖动",
+      "将版本提升到 1.4.3、Android versionCode 提升到 1987656，并重建同步 APK 与服务端静态资源"
+    ],
+    "verification": [
+      "web: npm run build 通过",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987656、versionName=1.4.3",
+      "APK: jar tf 确认包含 assets/public/assets/index-9c025508.js 和 index-9182e471.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.3、versionCode=1987656",
+      "https://REDACTED_DOMAIN 首页加载 index-9c025508.js 和 index-9182e471.css",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.3.apk 返回上传成功，bdpan ls 确认远端文件存在",
+      "ADB 安装未执行：当前 adb devices -l 未发现已连接设备"
+    ]
   }
 ]

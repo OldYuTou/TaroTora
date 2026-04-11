@@ -57,7 +57,14 @@
             </div>
           </div>
           <div class="terminal-body">
-            <div :ref="el => setTerminalRef(el, index)" class="xterm-container"></div>
+            <div
+              :ref="el => setTerminalRef(el, index)"
+              class="xterm-container"
+              @touchstart="handleTerminalTouchStart($event, index)"
+              @touchmove.prevent="handleTerminalTouchMove"
+              @touchend="handleTerminalTouchEnd"
+              @touchcancel="clearTerminalTouch"
+            ></div>
             <textarea
               :ref="el => setInputRef(el, index)"
               class="mobile-input"
@@ -79,7 +86,7 @@
             <div
               class="terminal-overlay"
               @touchstart="handleTerminalTouchStart($event, index)"
-              @touchmove="handleTerminalTouchMove"
+              @touchmove.prevent="handleTerminalTouchMove"
               @touchend="handleTerminalTouchEnd"
               @touchcancel="clearTerminalTouch"
               @dblclick.prevent="focusTerminalInput(index)"
@@ -221,6 +228,7 @@ const TAP_MOVE_LIMIT = 18
 const GESTURE_THRESHOLD = 8
 const LONG_PRESS_DELAY = 550
 const TERMINAL_SCROLLBACK_LINES = 50000
+const TERMINAL_TOUCH_SCROLL_SENSITIVITY = 2.5
 
 let terminalTouchState = null
 let longPressTimer = null
@@ -501,13 +509,13 @@ function handleTerminalTouchMove(event) {
     const term = getTerminalInstance(terminalTouchState.index)
     if (term?.xterm) {
       const lineHeight = getTerminalLineHeight(terminalTouchState.index)
-      const deltaY = terminalTouchState.lastPoint.clientY - touch.clientY
+      const deltaY = touch.clientY - terminalTouchState.lastPoint.clientY
       terminalTouchState.scrollRemainder += deltaY
-      const lines = Math.trunc(terminalTouchState.scrollRemainder / lineHeight)
+      const lines = Math.trunc((terminalTouchState.scrollRemainder / lineHeight) * TERMINAL_TOUCH_SCROLL_SENSITIVITY)
 
       if (lines !== 0) {
         term.xterm.scrollLines(lines)
-        terminalTouchState.scrollRemainder -= lines * lineHeight
+        terminalTouchState.scrollRemainder -= (lines / TERMINAL_TOUCH_SCROLL_SENSITIVITY) * lineHeight
       }
     }
     event.preventDefault()
