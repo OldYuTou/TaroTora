@@ -158,20 +158,15 @@ async function handleLogin() {
       axios.defaults.headers.common['Authorization'] = `Bearer ${loginForm.token}`
 
       const socket = io(loginForm.server, {
+        auth: { token: loginForm.token },
         transports: ['websocket', 'polling']
       })
 
       socket.on('connect', () => {
-        socket.emit('auth', loginForm.token)
-      })
-
-      socket.on('auth', (status) => {
-        if (status === 'success') {
-          window.controlSocket = socket
-          // 移动端跳转到控制页面（终端）
-          const isMobile = window.innerWidth <= 768
-          router.push(isMobile ? '/control-mobile' : '/files')
-        }
+        window.controlSocket = socket
+        // 移动端跳转到控制页面（终端）
+        const isMobile = window.innerWidth <= 768
+        router.push(isMobile ? '/control-mobile' : '/files')
       })
 
       socket.on('connect_error', () => {
