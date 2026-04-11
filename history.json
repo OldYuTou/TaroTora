@@ -24,5 +24,19 @@
     "verification": [
       "server: node --check src/index.js"
     ]
+  },
+  {
+    "date": "2026-04-11",
+    "summary": "同步最新前端构建到服务端静态目录并验证局域网连接",
+    "changes": [
+      "将 web/dist 最新构建同步到 server/public，避免手机访问 3000 时加载旧前端资源",
+      "确认本地和局域网地址的 HTTP API 与 Socket.IO 握手均可用"
+    ],
+    "verification": [
+      "http://127.0.0.1:3000/health 通过",
+      "http://REDACTED_LAN_IP:3000/health 通过",
+      "Socket.IO: 127.0.0.1:3000 和 REDACTED_LAN_IP:3000 握手通过",
+      "FRP 公网端口 REDACTED_IP:REDACTED_PORT 仍不可达，判断为公网端口/防火墙问题"
+    ]
   }
 ]
