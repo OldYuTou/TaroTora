@@ -214,7 +214,7 @@ router.post('/mkdir', async (req, res) => {
 router.get('/drives', async (req, res) => {
   try {
     // 使用 PowerShell 获取磁盘信息（wmic 已弃用）
-    const cmd = 'powershell -Command "Get-CimInstance Win32_LogicalDisk | Select-Object DeviceID,Size,FreeSpace | ConvertTo-Json -Compress"';
+    const cmd = 'powershell -Command "Get-CimInstance Win32_LogicalDisk | Select-Object DeviceID,Size,FreeSpace | ConvertTo-Json -Compress | ForEach-Object { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $_ }"';
     const { stdout } = await execPromise(cmd);
 
     const data = JSON.parse(stdout);
