@@ -176,5 +176,18 @@
       "重启 3000 端口服务后，本地 http://127.0.0.1:3000/health 返回 status=ok，新服务进程 PID 为 26204",
       "ADB 安装未执行：当前 adb devices -l 未发现已连接设备"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "上传正式 APK 到百度网盘",
+    "changes": [
+      "使用本机 bdpan CLI 登录态将正式签名包 TaroTora.apk 上传到百度网盘",
+      "远端保存路径为 /apps/bdpan/TaroTora/TaroTora-release-v1.4.1.apk"
+    ],
+    "verification": [
+      "bdpan whoami 确认账号已登录且 Token 有效",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.1.apk 返回上传成功",
+      "bdpan ls TaroTora 确认远端存在 TaroTora-release-v1.4.1.apk，大小约 3.4 MB"
+    ]
   }
 ]
