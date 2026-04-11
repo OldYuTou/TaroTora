@@ -101,5 +101,19 @@
       "确认 CLAUDE.md 已创建并包含 Git commit、history.json、自测和 APK 安装相关规范",
       "node JSON 解析检查 history.json 通过"
     ]
+  },
+  {
+    "date": "2026-04-11",
+    "summary": "拆分 Claude 工作指南和问题复盘文档",
+    "changes": [
+      "在 CLAUDE.md 中新增问题复盘文档规范，要求完整复盘放入 docs/postmortems",
+      "将 APK WebSocket 连接失败复盘迁移到 docs/postmortems/2026-04-11-apk-websocket.md",
+      "保留 CLAUDE.md 作为长期工作规则入口，并在其中索引本次复盘文档"
+    ],
+    "verification": [
+      "确认 CLAUDE.md 仅保留工作约束和复盘索引",
+      "确认 docs/postmortems/2026-04-11-apk-websocket.md 包含现象、根因、修复、验证和后续注意",
+      "node JSON 解析检查 history.json 通过"
+    ]
   }
 ]
