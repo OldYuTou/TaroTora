@@ -1,8 +1,8 @@
 {
-  "version": "1.4.8",
-  "versionCode": 1987661,
+  "version": "1.4.9",
+  "versionCode": 1987662,
   "filename": "TaroTora.apk",
-  "changelog": "修复移动端终端键盘避让和默认高度：终端默认占满屏幕，键盘弹出时使用 adjustResize 和 visualViewport 保持光标可见",
+  "changelog": "修复移动端终端收起键盘后光标回弹：键盘收起动画期间持续同步视口并保持终端滚到底部",
   "forceUpdate": false,
-  "updatedAt": "2026-04-12T12:47:41.637+08:00"
+  "updatedAt": "2026-04-12T12:54:52.183+08:00"
 }

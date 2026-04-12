@@ -236,6 +236,8 @@ const TERMINAL_TOUCH_SCROLL_SENSITIVITY = 1.6
 const KEYBOARD_VISIBLE_THRESHOLD = 80
 const KEYBOARD_SAFE_GAP = 12
 const MOBILE_NAV_HEIGHT = 64
+const KEYBOARD_CLOSE_SETTLE_MS = 700
+const KEYBOARD_CLOSE_SYNC_DELAYS = [120, 320, 680]
 
 const isKeyboardVisible = ref(false)
 const visualViewportHeight = ref(`calc(100vh - ${MOBILE_NAV_HEIGHT}px)`)
@@ -246,6 +248,7 @@ const controlMobileStyle = computed(() => ({
 let terminalTouchState = null
 let longPressTimer = null
 let lastTerminalTap = null
+let keepCursorAfterKeyboardUntil = 0
 
 // 调试信息
 const debugInfo = ref([])
@@ -422,7 +425,7 @@ function syncKeyboardViewport() {
     : `calc(100vh - ${MOBILE_NAV_HEIGHT}px)`
 
   nextTick(() => {
-    if (inputMode.value) {
+    if (inputMode.value || Date.now() < keepCursorAfterKeyboardUntil) {
       keepTerminalCursorVisible(activeTerminalIndex.value, true)
     } else {
       refreshTerminalViewport(activeTerminalIndex.value, true)
@@ -462,7 +465,11 @@ function focusTerminalInput(index = activeTerminalIndex.value) {
 
 function handleMobileInputBlur() {
   inputMode.value = false
+  keepCursorAfterKeyboardUntil = Date.now() + KEYBOARD_CLOSE_SETTLE_MS
   syncKeyboardViewport()
+  KEYBOARD_CLOSE_SYNC_DELAYS.forEach(delay => {
+    setTimeout(syncKeyboardViewport, delay)
+  })
 }
 
 // 保持覆盖层常驻：浏览、滚动和选择都经过覆盖层手势处理，输入通过双击或键盘按钮触发。
