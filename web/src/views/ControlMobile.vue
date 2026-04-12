@@ -228,12 +228,7 @@ import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
 import { getDefaultServerUrl, normalizeServerUrl } from '../utils/serverUrl'
-import {
-  ensureTerminalReminderPermission,
-  getTerminalReminderState,
-  removeTerminalReminderState,
-  updateTerminalReminderState
-} from '../utils/terminalReminder'
+import { ensureTerminalReminderPermission } from '../utils/terminalReminder'
 
 // 终端列表
 const terminals = ref([])
@@ -1032,14 +1027,30 @@ function sendInputToTerminal(index, data) {
     const terminal = terminals.value[index]
     if (terminal && data) {
       terminal.hasUserMessage = true
-      updateTerminalReminderState(terminal.id, {
-        enabled: terminal.reminderEnabled,
-        hasUserMessage: true,
-        name: terminal.name,
-        cwd: terminal.cwd
-      })
     }
     socket.emit('terminal-input', { terminalId, data })
+  }
+}
+
+function handleSocketTerminalReminderReady(data) {
+  const terminal = terminals.value.find(t => t.id === data.terminalId)
+  if (!terminal) return
+
+  terminal.hasUserMessage = false
+  if (data.name) {
+    terminal.name = data.name
+  }
+  addDebug('终端提醒就绪: ' + terminal.name, 'success')
+}
+
+function handleSocketTerminalReminderUpdated(data) {
+  const terminal = terminals.value.find(t => t.id === data.terminalId)
+  if (!terminal) return
+
+  terminal.reminderEnabled = Boolean(data.reminderEnabled)
+  terminal.hasUserMessage = Boolean(data.hasUserMessage)
+  if (data.name) {
+    terminal.name = data.name
   }
 }
 
@@ -1099,20 +1110,11 @@ function initSocket() {
       enqueueTerminalOutput(data.terminalId, data.data)
     })
 
-    socket.off('terminal-reminder-ready')
-    socket.on('terminal-reminder-ready', (data) => {
-      const terminal = terminals.value.find(t => t.id === data.terminalId)
-      if (!terminal) return
+    socket.off('terminal-reminder-ready', handleSocketTerminalReminderReady)
+    socket.on('terminal-reminder-ready', handleSocketTerminalReminderReady)
 
-      terminal.hasUserMessage = false
-      updateTerminalReminderState(terminal.id, {
-        enabled: terminal.reminderEnabled,
-        hasUserMessage: false,
-        name: terminal.name,
-        cwd: terminal.cwd
-      })
-      addDebug('终端提醒就绪: ' + terminal.name, 'success')
-    })
+    socket.off('terminal-reminder-updated', handleSocketTerminalReminderUpdated)
+    socket.on('terminal-reminder-updated', handleSocketTerminalReminderUpdated)
 
     socket.off('terminal-exit')
     socket.on('terminal-exit', (data) => {
@@ -1126,6 +1128,14 @@ function initSocket() {
     socket.off('terminal-created')
     socket.on('terminal-created', (data) => {
       addDebug('终端创建成功: ' + data.terminalId.substring(0, 8) + ' PID:' + data.pid + (data.resumed ? ' [恢复]' : ''), 'success')
+      const terminal = terminals.value.find(t => t.id === data.terminalId)
+      if (terminal) {
+        terminal.reminderEnabled = Boolean(data.reminderEnabled)
+        terminal.hasUserMessage = Boolean(data.hasUserMessage)
+        if (data.name) {
+          terminal.name = data.name
+        }
+      }
       // 找到对应的终端并显示连接成功
       const termInstance = termInstances.find(t => t.id === data.terminalId)
       if (termInstance) {
@@ -1148,27 +1158,19 @@ function initSocket() {
 }
 
 // 创建终端
-async function createTerminal(cwd, name, existingId = null) {
+async function createTerminal(cwd, name, existingId = null, initialState = {}) {
   const id = existingId || generateId(cwd)
   const terminalName = name || getTerminalNameFromCwd(cwd)
 
   addDebug((existingId ? '恢复终端: ' : '创建终端: ') + id.substring(0, 8) + ' ' + terminalName)
-  const reminderState = getTerminalReminderState(id)
 
   terminals.value.push({
     id,
     name: terminalName,
     cwd,
     createdAt: Date.now(),
-    reminderEnabled: reminderState.enabled,
-    hasUserMessage: reminderState.hasUserMessage
-  })
-
-  updateTerminalReminderState(id, {
-    enabled: reminderState.enabled,
-    hasUserMessage: reminderState.hasUserMessage,
-    name: terminalName,
-    cwd
+    reminderEnabled: Boolean(initialState.reminderEnabled),
+    hasUserMessage: Boolean(initialState.hasUserMessage)
   })
 
   // 切换到新终端
@@ -1188,6 +1190,7 @@ async function createTerminal(cwd, name, existingId = null) {
     socket.emit('terminal-create', {
       terminalId: id,
       cwd,
+      name: terminalName,
       ...getTerminalSize(termInstance)
     })
   } else if (socket) {
@@ -1199,6 +1202,7 @@ async function createTerminal(cwd, name, existingId = null) {
       socket.emit('terminal-create', {
         terminalId: id,
         cwd,
+        name: terminalName,
         ...getTerminalSize(termInstance)
       })
     })
@@ -1267,12 +1271,6 @@ async function initXterm(id, index) {
       const terminal = terminals.value.find(t => t.id === id)
       if (terminal && data) {
         terminal.hasUserMessage = true
-        updateTerminalReminderState(terminal.id, {
-          enabled: terminal.reminderEnabled,
-          hasUserMessage: true,
-          name: terminal.name,
-          cwd: terminal.cwd
-        })
       }
       socket.emit('terminal-input', { terminalId: id, data })
     }
@@ -1323,12 +1321,13 @@ async function toggleActiveTerminalReminder() {
   }
 
   terminal.reminderEnabled = !terminal.reminderEnabled
-  updateTerminalReminderState(terminal.id, {
-    enabled: terminal.reminderEnabled,
-    name: terminal.name,
-    cwd: terminal.cwd,
-    hasUserMessage: terminal.hasUserMessage
-  })
+  if (socket && socket.connected) {
+    socket.emit('terminal-set-reminder', {
+      terminalId: terminal.id,
+      enabled: terminal.reminderEnabled,
+      name: terminal.name
+    })
+  }
   addDebug(`终端提醒已${terminal.reminderEnabled ? '开启' : '关闭'}: ${terminal.name}`)
 }
 
@@ -1345,7 +1344,6 @@ function closeTerminal(index, { confirmClose = true } = {}) {
   }
 
   clearTerminalOutputQueue(terminal.id)
-  removeTerminalReminderState(terminal.id)
 
   // 通知服务器关闭终端
   if (socket) {
@@ -1518,7 +1516,7 @@ function requestTerminalList() {
     // 为每个已存在的终端创建本地界面并连接
     for (const serverTerm of serverTerminals) {
       addDebug(`恢复终端: ${serverTerm.id.substring(0, 8)} 路径: ${serverTerm.cwd}`)
-      await createTerminal(serverTerm.cwd, null, serverTerm.id)
+      await createTerminal(serverTerm.cwd, serverTerm.name, serverTerm.id, serverTerm)
     }
   })
 

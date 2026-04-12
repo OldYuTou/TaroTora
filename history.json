@@ -1039,5 +1039,33 @@
       "adb logcat -d -t 400 未发现 FATAL EXCEPTION、AndroidRuntime 或本地通知插件崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.33.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "修复终端提醒状态与通知触发",
+    "changes": [
+      "将每个终端的提醒开关从前端 sessionStorage 状态迁移到服务端 persistentSessions，会话重连后由 terminal-list 和 terminal-created 返回 reminderEnabled 与 hasUserMessage",
+      "终端创建与恢复时向服务端同步 displayName，提醒事件与提醒状态广播统一携带终端名称，避免自定义终端名在重连后丢失",
+      "新增 terminal-set-reminder 和 terminal-reminder-updated 事件，提醒开关改为由服务端持有并向所有连接该终端的客户端同步",
+      "修复控制页 initSocket 中 socket.off('terminal-reminder-ready') 会把 App.vue 全局通知监听一并移除的问题，改为按命名处理函数解绑",
+      "terminal-reminder-ready 现在仅在服务端确认该终端 reminderEnabled=true 时发出，App.vue 收到后直接发送系统通知并显示应用内通知",
+      "保留本地通知权限申请逻辑，但只负责权限与通知发送，不再在客户端保存提醒开关状态",
+      "将版本提升到 1.4.34、Android versionCode 提升到 1987687，并重建同步 APK 与服务端静态资源",
+      "上传正式签名包到百度网盘 TaroTora/TaroTora-release-v1.4.34.apk"
+    ],
+    "verification": [
+      "server: node --check server/src/routes/terminal.js 通过",
+      "web: npm run build 通过，产物为 index-14f2c4b5.js、index-8a59eed5.css 和 web-8b0f9ade.js",
+      "web: npm run cap:sync 通过，Android 侧识别到 @capacitor/local-notifications 插件",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: aapt 确认 versionCode=1987687、versionName=1.4.34，且包含 android.permission.POST_NOTIFICATIONS",
+      "APK: jar tf 确认包含 assets/public/assets/index-14f2c4b5.js、assets/public/assets/index-8a59eed5.css、assets/public/assets/web-8b0f9ade.js",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.34、versionCode=1987687",
+      "https://REDACTED_DOMAIN 首页加载 index-14f2c4b5.js 和 index-8a59eed5.css",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.34.apk 返回上传成功，bdpan ls 确认远端文件存在",
+      "adb install -r .\\TaroTora-release-v1.4.34.apk 因当前无已连接设备返回 no devices/emulators found"
+    ]
   }
 ]

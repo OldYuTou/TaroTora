@@ -59,6 +59,18 @@ function appendOutputBuffer(session, data) {
   }
 }
 
+function getTerminalNameFromCwd(cwd) {
+  if (!cwd) return '终端';
+  const normalized = String(cwd).replace(/[\\/]+$/, '');
+  const parts = normalized.split(/[\\/]+/).filter(Boolean);
+  return parts.at(-1) || normalized || '终端';
+}
+
+function resolveTerminalDisplayName(name, cwd) {
+  const trimmedName = typeof name === 'string' ? name.trim() : '';
+  return trimmedName || getTerminalNameFromCwd(cwd);
+}
+
 function clearTerminalReminderTimer(session) {
   if (session?.reminderIdleTimer) {
     clearTimeout(session.reminderIdleTimer);
@@ -89,11 +101,14 @@ function scheduleTerminalReminder(namespace, session) {
     session.hasUserMessage = false;
     session.reminderIdleTimer = null;
 
-    emitToTerminalConnections(namespace, session, 'terminal-reminder-ready', {
-      terminalId: session.id,
-      cwd: session.cwd,
-      quietMs: TERMINAL_REMINDER_IDLE_MS
-    });
+    if (session.reminderEnabled) {
+      emitToTerminalConnections(namespace, session, 'terminal-reminder-ready', {
+        terminalId: session.id,
+        cwd: session.cwd,
+        name: session.displayName,
+        quietMs: TERMINAL_REMINDER_IDLE_MS
+      });
+    }
   }, TERMINAL_REMINDER_IDLE_MS);
 }
 
@@ -104,7 +119,7 @@ function scheduleTerminalReminder(namespace, session) {
  * @param {Object} options - 终端选项
  */
 async function createOrResumeTerminal(socket, terminalId, options = {}) {
-  const { cwd, cols = 80, rows = 24 } = options;
+  const { cwd, cols = 80, rows = 24, name } = options;
   const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
   const size = normalizeTerminalSize(cols, rows);
 
@@ -127,6 +142,7 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
   if (existingSession) {
     console.log(`[Terminal] Resuming existing terminal: ${terminalId}, PID: ${existingSession.process.pid}`);
     resizeTerminalProcess(existingSession.process, size.cols, size.rows);
+    existingSession.displayName = resolveTerminalDisplayName(name || existingSession.displayName, existingSession.cwd);
 
     // 添加新的连接到该终端
     existingSession.connections.add(socket.id);
@@ -150,6 +166,9 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
       pid: existingSession.process.pid,
       shell: existingSession.shell,
       cwd: existingSession.cwd,
+      name: existingSession.displayName,
+      reminderEnabled: existingSession.reminderEnabled,
+      hasUserMessage: existingSession.hasUserMessage,
       resumed: true
     });
 
@@ -173,6 +192,7 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
       process: ptyProcess,
       shell: shell,
       cwd: workingDir,
+      displayName: resolveTerminalDisplayName(name, workingDir),
       connections: new Set([socket.id]),
       createdAt: Date.now(),
       lastActivity: Date.now(),
@@ -181,7 +201,8 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
       outputBuffer: [], // 输出缓存，用于恢复连接
       outputBufferSize: 0,
       hasUserMessage: false,
-      reminderIdleTimer: null
+      reminderIdleTimer: null,
+      reminderEnabled: false
     };
 
     persistentSessions.set(terminalId, session);
@@ -220,6 +241,9 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
       pid: ptyProcess.pid,
       shell: shell,
       cwd: workingDir,
+      name: session.displayName,
+      reminderEnabled: session.reminderEnabled,
+      hasUserMessage: session.hasUserMessage,
       resumed: false
     });
 
@@ -255,7 +279,7 @@ function terminalSocket(socket) {
   });
 
   // 创建或恢复终端会话（新版多终端API）
-  socket.on('terminal-create', async ({ terminalId, cwd, cols = 80, rows = 24 }) => {
+  socket.on('terminal-create', async ({ terminalId, cwd, cols = 80, rows = 24, name }) => {
     // 检查认证状态
     if (!isAuthenticated) {
       socket.emit('terminal-error', { terminalId, error: 'Not authenticated' });
@@ -269,7 +293,7 @@ function terminalSocket(socket) {
 
     console.log();
     console.log(`[Terminal] Received cwd from client: "${cwd}"`);
-    await createOrResumeTerminal(socket, terminalId, { cwd, cols, rows });
+    await createOrResumeTerminal(socket, terminalId, { cwd, cols, rows, name });
   });
 
   // 接收客户端输入（新版API）
@@ -290,6 +314,25 @@ function terminalSocket(socket) {
     if (session && session.connections.has(socket.id)) {
       resizeTerminalProcess(session.process, cols, rows);
     }
+  });
+
+  socket.on('terminal-set-reminder', ({ terminalId, enabled, name }) => {
+    const session = persistentSessions.get(terminalId);
+    if (!session || !session.connections.has(socket.id)) {
+      socket.emit('terminal-error', { terminalId, error: 'Terminal not found' });
+      return;
+    }
+
+    session.reminderEnabled = Boolean(enabled);
+    session.displayName = resolveTerminalDisplayName(name || session.displayName, session.cwd);
+
+    emitToTerminalConnections(socket.nsp, session, 'terminal-reminder-updated', {
+      terminalId,
+      reminderEnabled: session.reminderEnabled,
+      hasUserMessage: session.hasUserMessage,
+      name: session.displayName,
+      cwd: session.cwd
+    });
   });
 
   // 关闭指定终端（新版API）- 点击叉叉真正关闭终端
@@ -332,9 +375,12 @@ function terminalSocket(socket) {
         id: terminalId,
         shell: session.shell,
         cwd: session.cwd,
+        name: session.displayName,
         createdAt: session.createdAt,
         connections: session.connections.size,
-        isConnected: session.connections.has(socket.id)
+        isConnected: session.connections.has(socket.id),
+        reminderEnabled: session.reminderEnabled,
+        hasUserMessage: session.hasUserMessage
       });
     });
 
