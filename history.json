@@ -438,5 +438,33 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.10.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "修复移动端终端收起键盘后的回底动画回弹",
+    "changes": [
+      "程序性回底时临时关闭 xterm smoothScrollDuration，避免平滑滚动队列在键盘收起和 fit 期间延迟回写旧位置",
+      "回底逻辑改为只使用 xterm 的 scrollToBottom 和 scrollToLine(baseY)，不再直接设置 .xterm-viewport.scrollTop 或手动派发 scroll 事件，避免触发 xterm viewport 旧位置折算",
+      "清理键盘收起同步定时器时同步清空 keepCursorAfterKeyboardUntil，防止新一轮输入继承旧状态",
+      "将版本提升到 1.4.11、Android versionCode 提升到 1987664，并重建同步 APK 与服务端静态资源",
+      "将正式包上传到百度网盘 TaroTora/TaroTora-release-v1.4.11.apk",
+      "使用正式签名包覆盖安装到手机，保留应用数据"
+    ],
+    "verification": [
+      "web: npm run build 通过",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987664、versionName=1.4.11",
+      "APK: jar tf 确认包含 assets/public/assets/index-d83ed716.js 和 index-64fa12c1.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.11、versionCode=1987664",
+      "https://REDACTED_DOMAIN 首页加载 index-d83ed716.js 和 index-64fa12c1.css",
+      "adb install -r .\\TaroTora-release-v1.4.11.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987664、versionName=1.4.11",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 26626",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.11.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]

@@ -398,17 +398,14 @@ function scrollTerminalToBottom(index) {
   const term = getTerminalInstance(index)?.xterm
   if (!term) return
 
+  const originalSmoothScrollDuration = term.options.smoothScrollDuration
+  term.options.smoothScrollDuration = 0
   term.scrollToBottom?.()
   const buffer = term.buffer?.active
   if (buffer) {
     term.scrollToLine?.(Math.max(0, buffer.baseY || 0))
   }
-
-  const viewport = getTerminalViewport(index)
-  if (viewport) {
-    viewport.scrollTop = viewport.scrollHeight
-    viewport.dispatchEvent(new Event('scroll', { bubbles: true }))
-  }
+  term.options.smoothScrollDuration = originalSmoothScrollDuration
 }
 
 function keepTerminalCursorVisible(index = activeTerminalIndex.value, shouldFit = false, repeatFrames = 2) {
@@ -435,6 +432,7 @@ function clearKeyboardCloseSync() {
     clearInterval(keyboardCloseSyncTimer)
     keyboardCloseSyncTimer = null
   }
+  keepCursorAfterKeyboardUntil = 0
 }
 
 function startKeyboardCloseSync(index = activeTerminalIndex.value) {
