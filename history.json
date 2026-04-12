@@ -250,5 +250,23 @@
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.3.apk 返回上传成功，bdpan ls 确认远端文件存在",
       "ADB 安装未执行：当前 adb devices -l 未发现已连接设备"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "安装移动端终端滚动修复版 APK 到手机",
+    "changes": [
+      "确认 ADB 已识别设备 23127PN0CC",
+      "先尝试安装 debug 包 TaroTora-debug-v1.4.3.apk，因手机当前安装的是正式签名包导致签名不匹配而失败",
+      "拉取手机当前已安装 APK 并用 apksigner 验证证书，确认当前包为正式签名 REDACTED_RELEASE_FINGERPRINT",
+      "改用正式签名包 TaroTora-release-v1.4.3.apk 覆盖安装，保留应用数据"
+    ],
+    "verification": [
+      "adb devices -l 显示设备 f68a31ec，型号 23127PN0CC，状态 device",
+      "adb install -r .\\TaroTora-release-v1.4.3.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987656、versionName=1.4.3",
+      "adb shell am start -n com.tarotora.remotecontrol/.MainActivity 成功启动应用",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 17012",
+      "adb logcat 最近日志未发现 com.tarotora.remotecontrol 的 FATAL EXCEPTION"
+    ]
   }
 ]
