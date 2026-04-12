@@ -268,5 +268,30 @@
       "adb shell pidof com.tarotora.remotecontrol 返回 PID 17012",
       "adb logcat 最近日志未发现 com.tarotora.remotecontrol 的 FATAL EXCEPTION"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "改进移动端终端绝对行滚动并安装到手机",
+    "changes": [
+      "移动端终端触摸滚动不再依赖 xterm.scrollLines 的相对滚动，改为读取 buffer.active.viewportY/baseY 并调用 scrollToLine 定位目标历史行",
+      "将版本提升到 1.4.4、Android versionCode 提升到 1987657，并重建同步 APK 与服务端静态资源",
+      "将正式包上传到百度网盘 TaroTora/TaroTora-release-v1.4.4.apk",
+      "使用正式签名包覆盖安装到手机，保留应用数据"
+    ],
+    "verification": [
+      "web: npm run build 通过",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987657、versionName=1.4.4",
+      "APK: jar tf 确认包含 assets/public/assets/index-4baebeab.js 和 index-4fd5b528.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过",
+      "adb install -r .\\TaroTora-release-v1.4.4.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987657、versionName=1.4.4",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 12501",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.4、versionCode=1987657",
+      "https://REDACTED_DOMAIN 首页加载 index-4baebeab.js 和 index-4fd5b528.css",
+      "bdpan ls TaroTora/TaroTora-release-v1.4.4.apk 确认远端文件存在"
+    ]
   }
 ]

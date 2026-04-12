@@ -330,6 +330,22 @@ function getTerminalLineHeight(index) {
   return 18
 }
 
+function scrollTerminalByTouch(index, deltaY) {
+  const term = getTerminalInstance(index)?.xterm
+  const buffer = term?.buffer?.active
+  if (!term || !buffer) return
+
+  const lineHeight = getTerminalLineHeight(index)
+  const lineDelta = (deltaY / lineHeight) * TERMINAL_TOUCH_SCROLL_SENSITIVITY
+  const maxLine = Math.max(0, buffer.baseY || 0)
+  const currentLine = buffer.viewportY || 0
+  const targetLine = Math.max(0, Math.min(maxLine, Math.round(currentLine + lineDelta)))
+
+  if (targetLine !== currentLine) {
+    term.scrollToLine(targetLine)
+  }
+}
+
 function refreshTerminalViewport(index = activeTerminalIndex.value, shouldFit = false) {
   const term = getTerminalInstance(index)
   if (!term) return
@@ -506,18 +522,8 @@ function handleTerminalTouchMove(event) {
   }
 
   if (terminalTouchState.gesture === 'scroll') {
-    const term = getTerminalInstance(terminalTouchState.index)
-    if (term?.xterm) {
-      const lineHeight = getTerminalLineHeight(terminalTouchState.index)
-      const deltaY = touch.clientY - terminalTouchState.lastPoint.clientY
-      terminalTouchState.scrollRemainder += deltaY
-      const lines = Math.trunc((terminalTouchState.scrollRemainder / lineHeight) * TERMINAL_TOUCH_SCROLL_SENSITIVITY)
-
-      if (lines !== 0) {
-        term.xterm.scrollLines(lines)
-        terminalTouchState.scrollRemainder -= (lines / TERMINAL_TOUCH_SCROLL_SENSITIVITY) * lineHeight
-      }
-    }
+    const deltaY = touch.clientY - terminalTouchState.lastPoint.clientY
+    scrollTerminalByTouch(terminalTouchState.index, deltaY)
     event.preventDefault()
   } else if (terminalTouchState.gesture === 'select') {
     startTerminalSelection(terminalTouchState.index, touch)
