@@ -837,5 +837,36 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.26.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "同步手机端终端列数到服务端 PTY",
+    "changes": [
+      "根据手机端反馈，继续微调右侧补列仍会让部分中文行尾字符超出屏幕，因此改为让服务端 PTY 按手机端 xterm 实际列数运行",
+      "移动端创建终端时携带当前 xterm cols/rows，后续 fit 后继续发送 terminal-resize，确保电脑端终端宽度跟随手机可视终端宽度",
+      "服务端在新建终端和恢复已有终端时都规范化并应用客户端 cols/rows，恢复会话时先 resize 再回放历史输出",
+      "移除移动端右侧额外补列逻辑，避免将 xterm 列数扩到手机屏幕外导致中文宽字符越界",
+      "将版本提升到 1.4.27、Android versionCode 提升到 1987680，并重建同步 APK 与服务端静态资源",
+      "重启 3000 端口服务，让服务端终端 resize 逻辑生效，并使用正式签名包覆盖安装到手机"
+    ],
+    "verification": [
+      "server: node --check server/src/routes/terminal.js 通过",
+      "web: npm run build 通过，产物为 index-512fca10.js 和 index-97784db8.css",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987680、versionName=1.4.27",
+      "APK: jar tf 确认包含 assets/public/assets/index-512fca10.js 和 assets/public/assets/index-97784db8.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "adb install -r .\\TaroTora-release-v1.4.27.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987680、versionName=1.4.27",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 2332",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.27、versionCode=1987680",
+      "https://REDACTED_DOMAIN 首页加载 index-512fca10.js 和 index-97784db8.css",
+      "Socket.IO: 测试终端按 cols=37 创建后，PowerShell [Console]::WindowWidth 返回 37；最终重启 3000 服务后复测仍返回 37",
+      "重启 3000 端口服务后，本地 http://127.0.0.1:3000/health 返回 status=ok，新服务进程 PID 为 59028",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.27.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]

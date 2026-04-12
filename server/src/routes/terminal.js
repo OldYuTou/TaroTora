@@ -36,6 +36,19 @@ const MAX_OUTPUT_BUFFER_SIZE = 10 * 1024 * 1024;
 // 自动清理已禁用 - 终端会一直保持运行直到用户手动关闭
 // 不再清理无连接的终端，用户需要通过 terminal-close 主动关闭
 
+function normalizeTerminalSize(cols, rows) {
+  return {
+    cols: Math.max(20, Math.min(300, Math.floor(Number(cols) || 80))),
+    rows: Math.max(8, Math.min(200, Math.floor(Number(rows) || 24)))
+  };
+}
+
+function resizeTerminalProcess(ptyProcess, cols, rows) {
+  const size = normalizeTerminalSize(cols, rows);
+  ptyProcess.resize(size.cols, size.rows);
+  return size;
+}
+
 function appendOutputBuffer(session, data) {
   session.outputBuffer.push(data);
   session.outputBufferSize += Buffer.byteLength(data, 'utf8');
@@ -54,6 +67,7 @@ function appendOutputBuffer(session, data) {
 async function createOrResumeTerminal(socket, terminalId, options = {}) {
   const { cwd, cols = 80, rows = 24 } = options;
   const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
+  const size = normalizeTerminalSize(cols, rows);
 
   // 检查路径是否存在，不存在则使用 home 目录
   console.log(`[Terminal] createOrResumeTerminal called with cwd: "${cwd}"`);
@@ -73,6 +87,7 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
 
   if (existingSession) {
     console.log(`[Terminal] Resuming existing terminal: ${terminalId}, PID: ${existingSession.process.pid}`);
+    resizeTerminalProcess(existingSession.process, size.cols, size.rows);
 
     // 添加新的连接到该终端
     existingSession.connections.add(socket.id);
@@ -106,8 +121,8 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
   try {
     const ptyProcess = pty.spawn(shell, [], {
       name: 'xterm-256color',
-      cols: cols,
-      rows: rows,
+      cols: size.cols,
+      rows: size.rows,
       cwd: workingDir,
       env: process.env,
       useConpty: process.platform === 'win32'
@@ -235,7 +250,7 @@ function terminalSocket(socket) {
   socket.on('terminal-resize', ({ terminalId, cols, rows }) => {
     const session = persistentSessions.get(terminalId);
     if (session && session.connections.has(socket.id)) {
-      session.process.resize(cols, rows);
+      resizeTerminalProcess(session.process, cols, rows);
     }
   });
 

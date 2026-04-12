@@ -235,7 +235,6 @@ const GESTURE_THRESHOLD = 4
 const LONG_PRESS_DELAY = 550
 const TERMINAL_SCROLLBACK_LINES = 50000
 const TERMINAL_TOUCH_SCROLL_SENSITIVITY = 1.6
-const TERMINAL_RIGHT_FIT_THRESHOLD = 2.25
 const KEYBOARD_VISIBLE_THRESHOLD = 80
 const KEYBOARD_SAFE_GAP = 12
 
@@ -391,7 +390,7 @@ function refreshTerminalViewport(index = activeTerminalIndex.value, shouldFit = 
   requestAnimationFrame(() => {
     if (shouldFit) {
       term.fitAddon?.fit()
-      stretchTerminalColumnsToEdge(term, terminalRefs.value[index])
+      emitTerminalResize(term)
     }
     term.xterm?.refresh?.(0, term.xterm.rows - 1)
   })
@@ -404,7 +403,7 @@ function fitTerminalToContainer(index = activeTerminalIndex.value, repeatFrames 
 
   const fit = (framesLeft) => {
     term.fitAddon?.fit()
-    stretchTerminalColumnsToEdge(term, container)
+    emitTerminalResize(term)
     term.xterm?.refresh?.(0, term.xterm.rows - 1)
 
     if (framesLeft > 0) {
@@ -415,19 +414,20 @@ function fitTerminalToContainer(index = activeTerminalIndex.value, repeatFrames 
   requestAnimationFrame(() => fit(repeatFrames))
 }
 
-function stretchTerminalColumnsToEdge(term, container) {
+function getTerminalSize(term) {
   const xterm = term?.xterm
-  if (!xterm || !container) return
-
-  const containerWidth = container.getBoundingClientRect().width
-  const cellWidth = xterm._core?._renderService?.dimensions?.css?.cell?.width
-  if (!containerWidth || !cellWidth || cellWidth <= 0) return
-
-  const fittedWidth = xterm.cols * cellWidth
-  const remainingWidth = containerWidth - fittedWidth
-  if (remainingWidth >= cellWidth * TERMINAL_RIGHT_FIT_THRESHOLD) {
-    xterm.resize(xterm.cols + 1, xterm.rows)
+  return {
+    cols: Math.max(20, Math.floor(Number(xterm?.cols) || 80)),
+    rows: Math.max(8, Math.floor(Number(xterm?.rows) || 24))
   }
+}
+
+function emitTerminalResize(term) {
+  if (!socket || !term?.id || !term?.xterm) return
+  socket.emit('terminal-resize', {
+    terminalId: term.id,
+    ...getTerminalSize(term)
+  })
 }
 
 function scrollTerminalToBottom(index) {
@@ -456,7 +456,7 @@ function keepTerminalCursorVisible(index = activeTerminalIndex.value, shouldFit 
   const sync = (framesLeft) => {
     if (shouldFit) {
       term.fitAddon?.fit()
-      stretchTerminalColumnsToEdge(term, terminalRefs.value[index])
+      emitTerminalResize(term)
     }
     scrollTerminalToBottom(index)
     term.xterm?.refresh?.(0, term.xterm.rows - 1)
@@ -1012,6 +1012,7 @@ function initSocket() {
           termInstance.xterm.writeln('\x1b[32m✓ 终端已连接 (PID: ' + data.pid + ')\x1b[0m')
         }
         termInstance.xterm.writeln('')
+        emitTerminalResize(termInstance)
       }
     })
 
@@ -1049,13 +1050,23 @@ async function createTerminal(cwd, name, existingId = null) {
 
   if (socket && socket.connected) {
     addDebug('发送创建终端命令: ' + id.substring(0, 8) + ' 路径: ' + cwd)
-    socket.emit('terminal-create', { terminalId: id, cwd })
+    const termInstance = termInstances.find(t => t.id === id)
+    socket.emit('terminal-create', {
+      terminalId: id,
+      cwd,
+      ...getTerminalSize(termInstance)
+    })
   } else if (socket) {
     // 如果 socket 还没连接，等待连接后再发送
     addDebug('等待 socket 连接...', 'warning')
     socket.once('connect', () => {
       addDebug('Socket 已连接，创建终端: ' + id.substring(0, 8))
-      socket.emit('terminal-create', { terminalId: id, cwd })
+      const termInstance = termInstances.find(t => t.id === id)
+      socket.emit('terminal-create', {
+        terminalId: id,
+        cwd,
+        ...getTerminalSize(termInstance)
+      })
     })
   } else {
     addDebug('错误: Socket 不可用', 'error')
@@ -1120,13 +1131,6 @@ async function initXterm(id, index) {
   term.onData((data) => {
     if (socket && socket.connected) {
       socket.emit('terminal-input', { terminalId: id, data })
-    }
-  })
-
-  // 处理 resize
-  term.onResize(({ cols, rows }) => {
-    if (socket) {
-      socket.emit('terminal-resize', { terminalId: id, cols, rows })
     }
   })
 
