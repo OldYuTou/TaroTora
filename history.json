@@ -575,5 +575,19 @@
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.15.apk 返回上传成功，bdpan ls 确认远端文件存在",
       "adb devices 返回空列表，未执行 adb install"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "安装移动端终端横向铺满修复版 APK",
+    "changes": [
+      "在手机重新连接 ADB 后，使用正式签名包 TaroTora-release-v1.4.15.apk 覆盖安装到已连接设备，保留应用数据",
+      "安装后启动 com.tarotora.remotecontrol/.MainActivity"
+    ],
+    "verification": [
+      "adb devices 确认设备 f68a31ec 在线",
+      "adb install -r .\\TaroTora-release-v1.4.15.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987668、versionName=1.4.15",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 20462"
+    ]
   }
 ]
