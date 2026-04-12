@@ -252,6 +252,7 @@ let longPressTimer = null
 let lastTerminalTap = null
 let keyboardCloseSyncTimer = null
 let terminalResizeObserver = null
+const terminalOutputQueues = new Map()
 
 // 调试信息
 const debugInfo = ref([])
@@ -272,6 +273,56 @@ function addDebug(text, type = 'info') {
 // 清除调试信息
 function clearDebug() {
   debugInfo.value = []
+}
+
+function clearTerminalOutputQueue(terminalId) {
+  const queue = terminalOutputQueues.get(terminalId)
+  if (queue?.rafId) {
+    cancelAnimationFrame(queue.rafId)
+  }
+  terminalOutputQueues.delete(terminalId)
+}
+
+function flushTerminalOutput(terminalId) {
+  const queue = terminalOutputQueues.get(terminalId)
+  if (!queue) return
+
+  queue.rafId = null
+  const term = termInstances.find(t => t.id === terminalId)
+  if (!term) {
+    terminalOutputQueues.delete(terminalId)
+    return
+  }
+
+  const output = queue.chunks.join('')
+  queue.chunks = []
+  if (output) {
+    term.xterm.write(output)
+    const index = terminals.value.findIndex(t => t.id === terminalId)
+    if (index !== -1) {
+      requestAnimationFrame(() => {
+        scrollTerminalToBottom(index)
+        term.xterm.refresh?.(0, term.xterm.rows - 1)
+      })
+    }
+  }
+
+  if (queue.chunks.length > 0 && !queue.rafId) {
+    queue.rafId = requestAnimationFrame(() => flushTerminalOutput(terminalId))
+  }
+}
+
+function enqueueTerminalOutput(terminalId, data) {
+  let queue = terminalOutputQueues.get(terminalId)
+  if (!queue) {
+    queue = { chunks: [], rafId: null }
+    terminalOutputQueues.set(terminalId, queue)
+  }
+
+  queue.chunks.push(data)
+  if (!queue.rafId) {
+    queue.rafId = requestAnimationFrame(() => flushTerminalOutput(terminalId))
+  }
 }
 
 function showToast(message) {
@@ -1007,15 +1058,7 @@ function initSocket() {
     socket.off('terminal-output') // 先移除旧的监听器
     socket.on('terminal-output', (data) => {
       addDebug('收到输出: ' + data.terminalId.substring(0, 8) + '...')
-      const term = termInstances.find(t => t.id === data.terminalId)
-      if (term) {
-        const index = terminals.value.findIndex(t => t.id === data.terminalId)
-        term.xterm.write(data.data, () => {
-          if (index !== -1) {
-            keepTerminalCursorVisible(index, false, 4)
-          }
-        })
-      }
+      enqueueTerminalOutput(data.terminalId, data.data)
     })
 
     socket.off('terminal-exit')
@@ -1198,6 +1241,7 @@ function switchTerminal(index) {
 function closeTerminal(index) {
   const terminal = terminals.value[index]
   if (!terminal) return
+  clearTerminalOutputQueue(terminal.id)
 
   // 通知服务器关闭终端
   if (socket) {
@@ -1414,6 +1458,7 @@ onUnmounted(() => {
   // 离开页面时只销毁 xterm 实例，不断开服务器终端连接
   // 这样用户重新进入时可以恢复终端
   terminals.value.forEach((t) => {
+    clearTerminalOutputQueue(t.id)
     const termInstance = termInstances.find(ti => ti.id === t.id)
     if (termInstance) {
       termInstance.xterm.dispose()

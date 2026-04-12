@@ -924,5 +924,33 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.29.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "优化移动端终端流式输出显示",
+    "changes": [
+      "根据手机端反馈，服务端已支持 PTY 流式输出，但移动端显示仍像等待一段输出结束后才刷新",
+      "将移动端 terminal-output 处理从等待 xterm.write callback 改为按 requestAnimationFrame 合并输出 chunk 并逐帧写入",
+      "每帧写入后立即滚到底部并刷新 xterm，避免连续输出时 WebView 中 write callback 队列延迟造成非流式显示",
+      "为每个终端维护独立输出队列，并在关闭终端或离开页面时清理 pending requestAnimationFrame",
+      "将版本提升到 1.4.30、Android versionCode 提升到 1987683，并重建同步 APK 与服务端静态资源",
+      "使用正式签名包覆盖安装到手机，并上传百度网盘 TaroTora/TaroTora-release-v1.4.30.apk"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-74b6dd7a.js 和 index-498b97d3.css",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 首次因 Gradle mergeDexRelease 的 classes.dex 被占用失败；执行 .\\gradlew.bat --stop 并清理 release mergeDexRelease 中间目录后重跑通过",
+      "APK: aapt 确认 versionCode=1987683、versionName=1.4.30",
+      "APK: jar tf 确认包含 assets/public/assets/index-74b6dd7a.js 和 assets/public/assets/index-498b97d3.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "adb install -r .\\TaroTora-release-v1.4.30.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987683、versionName=1.4.30",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 29372",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.30、versionCode=1987683",
+      "https://REDACTED_DOMAIN 首页加载 index-74b6dd7a.js 和 index-498b97d3.css",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.30.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]
