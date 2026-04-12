@@ -235,25 +235,19 @@ const TERMINAL_SCROLLBACK_LINES = 50000
 const TERMINAL_TOUCH_SCROLL_SENSITIVITY = 1.6
 const KEYBOARD_VISIBLE_THRESHOLD = 80
 const KEYBOARD_SAFE_GAP = 12
-const MOBILE_NAV_HEIGHT = 64
-const FULL_CONTROL_HEIGHT = `calc(100vh - ${MOBILE_NAV_HEIGHT}px)`
-const KEYBOARD_CLOSE_MAX_WAIT_MS = 1400
-const KEYBOARD_CLOSE_SYNC_INTERVAL = 80
 
 const isKeyboardVisible = ref(false)
-const isKeyboardClosing = ref(false)
-const visualViewportHeight = ref(FULL_CONTROL_HEIGHT)
+const keyboardViewportHeight = ref('')
 const controlMobileStyle = computed(() => ({
-  '--control-mobile-height': visualViewportHeight.value
+  ...(isKeyboardVisible.value && keyboardViewportHeight.value
+    ? { '--control-mobile-height': keyboardViewportHeight.value }
+    : {})
 }))
 
 let terminalTouchState = null
 let longPressTimer = null
 let lastTerminalTap = null
 let keyboardCloseSyncTimer = null
-let keyboardCloseStartedAt = 0
-let keyboardCloseStableFrames = 0
-let lastKeyboardViewportHeight = ''
 
 // 调试信息
 const debugInfo = ref([])
@@ -433,57 +427,21 @@ function keepTerminalCursorVisible(index = activeTerminalIndex.value, shouldFit 
 
 function clearKeyboardCloseSync() {
   if (keyboardCloseSyncTimer) {
-    clearInterval(keyboardCloseSyncTimer)
+    clearTimeout(keyboardCloseSyncTimer)
     keyboardCloseSyncTimer = null
   }
-  keyboardCloseStartedAt = 0
-  keyboardCloseStableFrames = 0
-  isKeyboardClosing.value = false
 }
 
 function startKeyboardCloseSync(index = activeTerminalIndex.value) {
   clearKeyboardCloseSync()
-  isKeyboardClosing.value = true
-  keyboardCloseStartedAt = Date.now()
-  keyboardCloseStableFrames = 0
-  if (lastKeyboardViewportHeight) {
-    visualViewportHeight.value = lastKeyboardViewportHeight
-  }
-
-  keyboardCloseSyncTimer = setInterval(() => {
-    settleKeyboardCloseIfReady(index)
-  }, KEYBOARD_CLOSE_SYNC_INTERVAL)
-  settleKeyboardCloseIfReady(index)
-}
-
-function finishKeyboardCloseSync(index = activeTerminalIndex.value) {
-  clearKeyboardCloseSync()
   isKeyboardVisible.value = false
-  visualViewportHeight.value = FULL_CONTROL_HEIGHT
-  nextTick(() => {
+  keyboardViewportHeight.value = ''
+
+  nextTick(() => refreshTerminalViewport(index, true))
+  keyboardCloseSyncTimer = setTimeout(() => {
     keepTerminalCursorVisible(index, true, 2)
-    setTimeout(() => keepTerminalCursorVisible(index, true, 1), 160)
-  })
-}
-
-function settleKeyboardCloseIfReady(index = activeTerminalIndex.value) {
-  const viewport = window.visualViewport
-  const layoutHeight = window.innerHeight || document.documentElement.clientHeight || 0
-
-  if (!viewport || !layoutHeight) {
-    finishKeyboardCloseSync(index)
-    return
-  }
-
-  const keyboardOverlap = Math.max(0, layoutHeight - viewport.height - viewport.offsetTop)
-  const viewportShrunk = viewport.height < layoutHeight - KEYBOARD_VISIBLE_THRESHOLD
-  const keyboardClosed = keyboardOverlap <= KEYBOARD_VISIBLE_THRESHOLD && !viewportShrunk
-
-  keyboardCloseStableFrames = keyboardClosed ? keyboardCloseStableFrames + 1 : 0
-
-  if (keyboardCloseStableFrames >= 2 || Date.now() - keyboardCloseStartedAt >= KEYBOARD_CLOSE_MAX_WAIT_MS) {
-    finishKeyboardCloseSync(index)
-  }
+    keyboardCloseSyncTimer = null
+  }, 360)
 }
 
 function syncKeyboardViewport() {
@@ -492,25 +450,18 @@ function syncKeyboardViewport() {
 
   if (!viewport || !layoutHeight) {
     isKeyboardVisible.value = false
-    visualViewportHeight.value = FULL_CONTROL_HEIGHT
+    keyboardViewportHeight.value = ''
     refreshTerminalViewport(activeTerminalIndex.value, true)
-    return
-  }
-
-  if (isKeyboardClosing.value) {
-    settleKeyboardCloseIfReady(activeTerminalIndex.value)
     return
   }
 
   const keyboardOverlap = Math.max(0, layoutHeight - viewport.height - viewport.offsetTop)
   const viewportShrunk = viewport.height < layoutHeight - KEYBOARD_VISIBLE_THRESHOLD
   isKeyboardVisible.value = inputMode.value && (keyboardOverlap > KEYBOARD_VISIBLE_THRESHOLD || viewportShrunk)
-  const keyboardHeight = `${Math.max(220, viewport.height - KEYBOARD_SAFE_GAP)}px`
-  if (inputMode.value) {
-    visualViewportHeight.value = keyboardHeight
-    lastKeyboardViewportHeight = keyboardHeight
+  if (isKeyboardVisible.value) {
+    keyboardViewportHeight.value = `${Math.max(220, viewport.height - KEYBOARD_SAFE_GAP)}px`
   } else {
-    visualViewportHeight.value = FULL_CONTROL_HEIGHT
+    keyboardViewportHeight.value = ''
   }
 
   nextTick(() => {
@@ -1392,8 +1343,8 @@ onUnmounted(() => {
 
 <style scoped>
 .control-mobile {
-  height: min(var(--control-mobile-height, calc(100vh - 64px)), calc(100vh - 64px));
-  max-height: min(var(--control-mobile-height, calc(100vh - 64px)), calc(100vh - 64px));
+  height: 100%;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   background: #0d1117;
@@ -1402,8 +1353,8 @@ onUnmounted(() => {
 }
 
 .control-mobile.keyboard-active {
-  height: min(var(--control-mobile-height), calc(100vh - 64px));
-  max-height: min(var(--control-mobile-height), calc(100vh - 64px));
+  height: var(--control-mobile-height);
+  max-height: var(--control-mobile-height);
 }
 
 /* 空白状态 */

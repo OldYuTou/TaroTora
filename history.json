@@ -494,5 +494,33 @@
       "https://REDACTED_DOMAIN 首页加载 index-c94ccc21.js 和 index-454b98ec.css",
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "修复移动端控制页初始半屏和键盘收起回弹",
+    "changes": [
+      "移除控制页非输入态的 JS 高度变量写入，默认使用父容器 height: 100% 占满可用区域，避免旧键盘视口高度导致刚进入页面只显示半屏",
+      "为移动端控制页在 App 外层添加专用 mobile-control-page class，使用 height: calc(100vh - 底部导航高度) 和 padding-bottom: 0，避免全屏终端与普通列表页共用 padding 方案造成高度叠加",
+      "键盘打开时才根据 visualViewport.height 写入 --control-mobile-height，键盘收起后立即清空高度变量，并只延迟一次回底，避免反复 fit 导致回弹",
+      "将版本提升到 1.4.13、Android versionCode 提升到 1987666，并重建同步 APK 与服务端静态资源",
+      "将正式包上传到百度网盘 TaroTora/TaroTora-release-v1.4.13.apk",
+      "使用正式签名包覆盖安装到手机，保留应用数据"
+    ],
+    "verification": [
+      "web: npm run build 通过",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987666、versionName=1.4.13",
+      "APK: jar tf 确认包含 assets/public/assets/index-c2ba257b.js 和 index-098692af.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.13、versionCode=1987666",
+      "https://REDACTED_DOMAIN 首页加载 index-c2ba257b.js 和 index-098692af.css",
+      "adb install -r .\\TaroTora-release-v1.4.13.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987666、versionName=1.4.13",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 27842",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.13.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]

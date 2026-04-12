@@ -63,7 +63,14 @@
     </aside>
 
     <!-- 主内容区 -->
-    <main class="main-content" :class="{ 'login-page': isLoginPage, 'has-mobile-nav': isMobile && !isLoginPage }">
+    <main
+      class="main-content"
+      :class="{
+        'login-page': isLoginPage,
+        'has-mobile-nav': isMobile && !isLoginPage,
+        'mobile-control-page': isMobile && isControlMobilePage
+      }"
+    >
       <!-- 消息通知容器 -->
       <div v-if="notifications.length > 0" class="notification-container">
         <div
@@ -142,6 +149,7 @@ const isMobile = ref(window.innerWidth <= 768)
 const notifications = ref([])
 
 const isLoginPage = computed(() => route.path === '/login')
+const isControlMobilePage = computed(() => route.path === '/control-mobile' || route.path === '/terminal')
 
 // 桌面端导航
 const desktopNavItems = [
@@ -542,6 +550,11 @@ body {
 .main-content.has-mobile-nav {
   padding-bottom: var(--mobile-nav-height);
   overflow: hidden;
+}
+
+.main-content.mobile-control-page {
+  height: calc(100vh - var(--mobile-nav-height));
+  padding-bottom: 0;
 }
 
 /* 移动端底部导航 */
