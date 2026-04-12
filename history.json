@@ -781,5 +781,34 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.23.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "修复移动端终端右侧空白未参与渲染",
+    "changes": [
+      "根据手机端反馈，问题不是右侧需要留安全边界，而是右侧空白没有参与终端渲染，导致字符在进入空白区域前被裁切",
+      "撤销 1.4.23 中 shrinkTerminalToSafeWidth 的右侧安全缩窄逻辑",
+      "恢复按右侧剩余空白补列的策略，但从旧版 ceil 改为 floor，只在剩余空白足够容纳完整字符列时才补列，最多补 2 列",
+      "在普通 fit、键盘/视口变化触发的 fit、以及保持光标可见时的 fit 中都应用 stretchTerminalColumnsToEdge",
+      "保留移除 canvas width: 100% 强制拉伸的改动，避免 CSS 二次缩放导致字符边缘失真",
+      "将版本提升到 1.4.24、Android versionCode 提升到 1987677，并重建同步 APK 与服务端静态资源",
+      "使用正式签名包覆盖安装到手机，并上传百度网盘 TaroTora/TaroTora-release-v1.4.24.apk"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-253cd6d5.js 和 index-24cabad7.css",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987677、versionName=1.4.24",
+      "APK: jar tf 确认包含 assets/public/assets/index-253cd6d5.js 和 index-24cabad7.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "adb install -r .\\TaroTora-release-v1.4.24.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987677、versionName=1.4.24",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 16367",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.24、versionCode=1987677",
+      "https://REDACTED_DOMAIN 首页加载 index-253cd6d5.js 和 index-24cabad7.css",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.24.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]

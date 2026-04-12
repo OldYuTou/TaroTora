@@ -235,7 +235,6 @@ const GESTURE_THRESHOLD = 4
 const LONG_PRESS_DELAY = 550
 const TERMINAL_SCROLLBACK_LINES = 50000
 const TERMINAL_TOUCH_SCROLL_SENSITIVITY = 1.6
-const TERMINAL_RIGHT_SAFE_PIXELS = 6
 const KEYBOARD_VISIBLE_THRESHOLD = 80
 const KEYBOARD_SAFE_GAP = 12
 
@@ -391,7 +390,7 @@ function refreshTerminalViewport(index = activeTerminalIndex.value, shouldFit = 
   requestAnimationFrame(() => {
     if (shouldFit) {
       term.fitAddon?.fit()
-      shrinkTerminalToSafeWidth(index)
+      stretchTerminalColumnsToEdge(term, terminalRefs.value[index])
     }
     term.xterm?.refresh?.(0, term.xterm.rows - 1)
   })
@@ -404,7 +403,7 @@ function fitTerminalToContainer(index = activeTerminalIndex.value, repeatFrames 
 
   const fit = (framesLeft) => {
     term.fitAddon?.fit()
-    shrinkTerminalToSafeWidth(index)
+    stretchTerminalColumnsToEdge(term, container)
     term.xterm?.refresh?.(0, term.xterm.rows - 1)
 
     if (framesLeft > 0) {
@@ -415,20 +414,19 @@ function fitTerminalToContainer(index = activeTerminalIndex.value, repeatFrames 
   requestAnimationFrame(() => fit(repeatFrames))
 }
 
-function shrinkTerminalToSafeWidth(index = activeTerminalIndex.value) {
-  const term = getTerminalInstance(index)?.xterm
-  const container = terminalRefs.value[index]
-  if (!term || !container || !term.cols) return
+function stretchTerminalColumnsToEdge(term, container) {
+  const xterm = term?.xterm
+  if (!xterm || !container) return
 
-  const canvas = container.querySelector('.xterm-screen canvas')
-  const canvasWidth = canvas?.getBoundingClientRect?.().width || 0
-  const cellWidth = canvasWidth > 0 ? canvasWidth / term.cols : container.clientWidth / term.cols
-  if (!Number.isFinite(cellWidth) || cellWidth <= 0) return
+  const containerWidth = container.getBoundingClientRect().width
+  const cellWidth = xterm._core?._renderService?.dimensions?.css?.cell?.width
+  if (!containerWidth || !cellWidth || cellWidth <= 0) return
 
-  const safeWidth = Math.max(0, container.clientWidth - TERMINAL_RIGHT_SAFE_PIXELS)
-  const safeCols = Math.max(2, Math.floor(safeWidth / cellWidth))
-  if (safeCols < term.cols) {
-    term.resize(safeCols, term.rows)
+  const fittedWidth = xterm.cols * cellWidth
+  const remainingWidth = containerWidth - fittedWidth
+  const extraCols = Math.min(2, Math.floor((remainingWidth - 1) / cellWidth))
+  if (extraCols > 0) {
+    xterm.resize(xterm.cols + extraCols, xterm.rows)
   }
 }
 
@@ -458,7 +456,7 @@ function keepTerminalCursorVisible(index = activeTerminalIndex.value, shouldFit 
   const sync = (framesLeft) => {
     if (shouldFit) {
       term.fitAddon?.fit()
-      shrinkTerminalToSafeWidth(index)
+      stretchTerminalColumnsToEdge(term, terminalRefs.value[index])
     }
     scrollTerminalToBottom(index)
     term.xterm?.refresh?.(0, term.xterm.rows - 1)
