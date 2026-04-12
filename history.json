@@ -810,5 +810,32 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.24.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "调整移动端终端中文宽字符补列阈值",
+    "changes": [
+      "根据手机端反馈，1.4.25 仍会让中文宽字符超出屏幕不到 1 个字符，说明补列阈值对中文双宽字符仍偏激进",
+      "将 TERMINAL_RIGHT_FIT_THRESHOLD 从 1.5 提高到 2.25，只有右侧剩余空白超过 2 个英文字符宽度时才补 1 列，给中文宽字符留出余量",
+      "保留按完整字符宽度补列、最多补 1 列的策略，避免回到 1.4.24 的超出屏幕问题",
+      "将版本提升到 1.4.26、Android versionCode 提升到 1987679，并重建同步 APK 与服务端静态资源",
+      "使用正式签名包覆盖安装到手机，并上传百度网盘 TaroTora/TaroTora-release-v1.4.26.apk"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-07d39c1b.js 和 index-8b0420cb.css",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987679、versionName=1.4.26",
+      "APK: jar tf 确认包含 assets/public/assets/index-07d39c1b.js 和 assets/public/assets/index-8b0420cb.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "adb install -r .\\TaroTora-release-v1.4.26.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987679、versionName=1.4.26",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 24332",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.26、versionCode=1987679",
+      "https://REDACTED_DOMAIN 首页加载 index-07d39c1b.js 和 index-8b0420cb.css",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.26.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]

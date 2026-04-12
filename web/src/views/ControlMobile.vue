@@ -235,6 +235,7 @@ const GESTURE_THRESHOLD = 4
 const LONG_PRESS_DELAY = 550
 const TERMINAL_SCROLLBACK_LINES = 50000
 const TERMINAL_TOUCH_SCROLL_SENSITIVITY = 1.6
+const TERMINAL_RIGHT_FIT_THRESHOLD = 2.25
 const KEYBOARD_VISIBLE_THRESHOLD = 80
 const KEYBOARD_SAFE_GAP = 12
 
@@ -424,9 +425,8 @@ function stretchTerminalColumnsToEdge(term, container) {
 
   const fittedWidth = xterm.cols * cellWidth
   const remainingWidth = containerWidth - fittedWidth
-  const extraCols = Math.min(2, Math.floor((remainingWidth - 1) / cellWidth))
-  if (extraCols > 0) {
-    xterm.resize(xterm.cols + extraCols, xterm.rows)
+  if (remainingWidth >= cellWidth * TERMINAL_RIGHT_FIT_THRESHOLD) {
+    xterm.resize(xterm.cols + 1, xterm.rows)
   }
 }
 
