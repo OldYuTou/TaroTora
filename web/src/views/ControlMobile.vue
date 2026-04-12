@@ -363,6 +363,13 @@ function generateId(cwd) {
   return 'term_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4)
 }
 
+function getTerminalNameFromCwd(cwd) {
+  if (!cwd) return '终端'
+  const normalized = String(cwd).replace(/[\\/]+$/, '')
+  const parts = normalized.split(/[\\/]+/).filter(Boolean)
+  return parts.at(-1) || normalized || '终端'
+}
+
 // 设置终端引用
 function setTerminalRef(el, index) {
   if (el) {
@@ -1066,7 +1073,7 @@ function initSocket() {
       addDebug('终端退出: ' + data.terminalId.substring(0, 8), 'warning')
       const index = terminals.value.findIndex(t => t.id === data.terminalId)
       if (index !== -1) {
-        closeTerminal(index)
+        closeTerminal(index, { confirmClose: false })
       }
     })
 
@@ -1097,7 +1104,7 @@ function initSocket() {
 // 创建终端
 async function createTerminal(cwd, name, existingId = null) {
   const id = existingId || generateId(cwd)
-  const terminalName = name || cwd.split('\\').pop() || '终端'
+  const terminalName = name || getTerminalNameFromCwd(cwd)
 
   addDebug((existingId ? '恢复终端: ' : '创建终端: ') + id.substring(0, 8) + ' ' + terminalName)
 
@@ -1238,9 +1245,17 @@ function switchTerminal(index) {
 }
 
 // 关闭终端
-function closeTerminal(index) {
+function closeTerminal(index, { confirmClose = true } = {}) {
   const terminal = terminals.value[index]
   if (!terminal) return
+
+  if (confirmClose) {
+    const title = terminal.name || getTerminalNameFromCwd(terminal.cwd)
+    if (!confirm(`确定要关闭终端「${title}」吗？\n\n关闭后该终端进程会被结束。`)) {
+      return
+    }
+  }
+
   clearTerminalOutputQueue(terminal.id)
 
   // 通知服务器关闭终端
@@ -1282,7 +1297,7 @@ function closeAllTerminals() {
 
   // 从后往前关闭，避免索引问题
   for (let i = terminals.value.length - 1; i >= 0; i--) {
-    closeTerminal(i)
+    closeTerminal(i, { confirmClose: false })
   }
 }
 
@@ -1414,7 +1429,7 @@ function requestTerminalList() {
     // 为每个已存在的终端创建本地界面并连接
     for (const serverTerm of serverTerminals) {
       addDebug(`恢复终端: ${serverTerm.id.substring(0, 8)} 路径: ${serverTerm.cwd}`)
-      await createTerminal(serverTerm.cwd, serverTerm.id.split('_')[1] || '终端', serverTerm.id)
+      await createTerminal(serverTerm.cwd, null, serverTerm.id)
     }
   })
 
