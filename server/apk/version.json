@@ -1,8 +1,8 @@
 {
-  "version": "1.4.6",
-  "versionCode": 1987659,
+  "version": "1.4.7",
+  "versionCode": 1987660,
   "filename": "TaroTora.apk",
-  "changelog": "优化移动端终端触摸滚动：按像素驱动 xterm viewport，并按手机端预期反转滑动方向",
+  "changelog": "修复移动端终端输入时键盘遮挡光标：根据 visualViewport 收缩终端高度并保持光标在键盘上方",
   "forceUpdate": false,
-  "updatedAt": "2026-04-12T12:29:09.021+08:00"
+  "updatedAt": "2026-04-12T12:40:10.758+08:00"
 }

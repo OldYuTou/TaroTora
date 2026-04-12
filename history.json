@@ -322,5 +322,34 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.6.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "修复移动端终端输入时键盘遮挡光标",
+    "changes": [
+      "移动端控制页根据 visualViewport 高度动态设置终端页面高度，键盘弹出时将终端区域收缩到键盘上方并保留 12px 安全间距",
+      "输入模式下在聚焦、输入回显和终端输出时调用 scrollToBottom 并刷新 xterm，保持光标位于键盘上方的可视区域",
+      "监听 visualViewport 的 resize 和 scroll 事件，兼容键盘弹出动画期间可视区域连续变化",
+      "浏览模式下只刷新终端尺寸，不强制回到底部，避免影响用户查看历史输出",
+      "将版本提升到 1.4.7、Android versionCode 提升到 1987660，并重建同步 APK 与服务端静态资源",
+      "将正式包上传到百度网盘 TaroTora/TaroTora-release-v1.4.7.apk",
+      "使用正式签名包覆盖安装到手机，保留应用数据"
+    ],
+    "verification": [
+      "web: npm run build 通过",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987660、versionName=1.4.7",
+      "APK: jar tf 确认包含 assets/public/assets/index-4fd6101f.js 和 index-f989c276.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.7、versionCode=1987660",
+      "https://REDACTED_DOMAIN 首页加载 index-4fd6101f.js 和 index-f989c276.css",
+      "adb install -r .\\TaroTora-release-v1.4.7.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987660、versionName=1.4.7",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 8120",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.7.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]

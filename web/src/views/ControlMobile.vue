@@ -6,7 +6,11 @@
 -->
 
 <template>
-  <div class="control-mobile">
+  <div
+    class="control-mobile"
+    :class="{ 'keyboard-active': isKeyboardVisible }"
+    :style="controlMobileStyle"
+  >
     <!-- 空白状态 - 没有终端时显示 -->
     <div v-if="terminals.length === 0" class="empty-state">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -203,7 +207,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
@@ -229,6 +233,14 @@ const GESTURE_THRESHOLD = 4
 const LONG_PRESS_DELAY = 550
 const TERMINAL_SCROLLBACK_LINES = 50000
 const TERMINAL_TOUCH_SCROLL_SENSITIVITY = 1.6
+const KEYBOARD_VISIBLE_THRESHOLD = 80
+const KEYBOARD_SAFE_GAP = 12
+
+const isKeyboardVisible = ref(false)
+const visualViewportHeight = ref('100%')
+const controlMobileStyle = computed(() => ({
+  '--control-mobile-height': visualViewportHeight.value
+}))
 
 let terminalTouchState = null
 let longPressTimer = null
@@ -377,6 +389,45 @@ function refreshTerminalViewport(index = activeTerminalIndex.value, shouldFit = 
   })
 }
 
+function keepTerminalCursorVisible(index = activeTerminalIndex.value, shouldFit = false) {
+  const term = getTerminalInstance(index)
+  if (!term) return
+
+  requestAnimationFrame(() => {
+    if (shouldFit) {
+      term.fitAddon?.fit()
+    }
+    term.xterm?.scrollToBottom?.()
+    term.xterm?.refresh?.(0, term.xterm.rows - 1)
+  })
+}
+
+function syncKeyboardViewport() {
+  const viewport = window.visualViewport
+  const layoutHeight = window.innerHeight || document.documentElement.clientHeight || 0
+
+  if (!viewport || !layoutHeight) {
+    isKeyboardVisible.value = false
+    visualViewportHeight.value = '100%'
+    refreshTerminalViewport(activeTerminalIndex.value, true)
+    return
+  }
+
+  const keyboardOverlap = Math.max(0, layoutHeight - viewport.height - viewport.offsetTop)
+  isKeyboardVisible.value = inputMode.value && keyboardOverlap > KEYBOARD_VISIBLE_THRESHOLD
+  visualViewportHeight.value = isKeyboardVisible.value
+    ? `${Math.max(220, viewport.height - KEYBOARD_SAFE_GAP)}px`
+    : '100%'
+
+  nextTick(() => {
+    if (inputMode.value) {
+      keepTerminalCursorVisible(activeTerminalIndex.value, true)
+    } else {
+      refreshTerminalViewport(activeTerminalIndex.value, true)
+    }
+  })
+}
+
 function clearLongPressTimer() {
   if (longPressTimer) {
     clearTimeout(longPressTimer)
@@ -401,13 +452,15 @@ function focusTerminalInput(index = activeTerminalIndex.value) {
   nextTick(() => {
     window.scrollTo?.(0, 0)
     input.focus({ preventScroll: true })
-    refreshTerminalViewport(index, true)
+    syncKeyboardViewport()
+    setTimeout(syncKeyboardViewport, 260)
     addDebug('已唤起终端键盘')
   })
 }
 
 function handleMobileInputBlur() {
   inputMode.value = false
+  syncKeyboardViewport()
 }
 
 // 保持覆盖层常驻：浏览、滚动和选择都经过覆盖层手势处理，输入通过双击或键盘按钮触发。
@@ -676,7 +729,7 @@ function handleMobileInput(event, index) {
 
   textarea.value = ''
   inputBuffers.value[index] = ''
-  refreshTerminalViewport(index)
+  keepTerminalCursorVisible(index)
 }
 
 function handleCompositionStart(index) {
@@ -696,7 +749,7 @@ function handleCompositionEnd(event, index) {
   // 清空输入框和缓冲区
   event.target.value = ''
   inputBuffers.value[index] = ''
-  refreshTerminalViewport(index)
+  keepTerminalCursorVisible(index)
 }
 
 // 处理按键按下
@@ -841,7 +894,7 @@ function initSocket() {
         term.xterm.write(data.data)
         if (inputMode.value) {
           const index = terminals.value.findIndex(t => t.id === data.terminalId)
-          refreshTerminalViewport(index)
+          keepTerminalCursorVisible(index)
         }
       }
     })
@@ -1144,10 +1197,11 @@ function handleResize() {
     term.fitAddon.fit()
     term.xterm.refresh(0, term.xterm.rows - 1)
   }
+  syncKeyboardViewport()
 }
 
 function handleVisualViewportResize() {
-  refreshTerminalViewport(activeTerminalIndex.value, true)
+  syncKeyboardViewport()
 }
 
 // 加载已存在的终端列表
@@ -1211,8 +1265,10 @@ onMounted(() => {
     checkPendingTerminal()
   }, 500)
   loadExistingTerminals()
+  syncKeyboardViewport()
   window.addEventListener('resize', handleResize)
   window.visualViewport?.addEventListener('resize', handleVisualViewportResize)
+  window.visualViewport?.addEventListener('scroll', handleVisualViewportResize)
   // 添加全局快捷键监听
   document.addEventListener('keydown', handleKeydown)
   // 加载调试设置
@@ -1224,6 +1280,7 @@ onUnmounted(() => {
   hideTerminalContextMenu()
   window.removeEventListener('resize', handleResize)
   window.visualViewport?.removeEventListener('resize', handleVisualViewportResize)
+  window.visualViewport?.removeEventListener('scroll', handleVisualViewportResize)
   document.removeEventListener('keydown', handleKeydown)
   // 离开页面时只销毁 xterm 实例，不断开服务器终端连接
   // 这样用户重新进入时可以恢复终端
@@ -1239,10 +1296,17 @@ onUnmounted(() => {
 
 <style scoped>
 .control-mobile {
-  height: 100%;
+  height: var(--control-mobile-height, 100%);
+  max-height: var(--control-mobile-height, 100%);
   display: flex;
   flex-direction: column;
   background: #0d1117;
+  overflow: hidden;
+}
+
+.control-mobile.keyboard-active {
+  height: var(--control-mobile-height);
+  max-height: var(--control-mobile-height);
 }
 
 /* 空白状态 */
