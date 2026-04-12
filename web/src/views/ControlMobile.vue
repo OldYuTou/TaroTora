@@ -228,6 +228,12 @@ import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
 import { getDefaultServerUrl, normalizeServerUrl } from '../utils/serverUrl'
+import {
+  ensureTerminalReminderPermission,
+  getTerminalReminderState,
+  removeTerminalReminderState,
+  updateTerminalReminderState
+} from '../utils/terminalReminder'
 
 // 终端列表
 const terminals = ref([])
@@ -1023,6 +1029,16 @@ function sendInputToTerminal(index, data) {
 
   // 直接发送到 socket，让后端返回显示
   if (socket && socket.connected) {
+    const terminal = terminals.value[index]
+    if (terminal && data) {
+      terminal.hasUserMessage = true
+      updateTerminalReminderState(terminal.id, {
+        enabled: terminal.reminderEnabled,
+        hasUserMessage: true,
+        name: terminal.name,
+        cwd: terminal.cwd
+      })
+    }
     socket.emit('terminal-input', { terminalId, data })
   }
 }
@@ -1083,6 +1099,21 @@ function initSocket() {
       enqueueTerminalOutput(data.terminalId, data.data)
     })
 
+    socket.off('terminal-reminder-ready')
+    socket.on('terminal-reminder-ready', (data) => {
+      const terminal = terminals.value.find(t => t.id === data.terminalId)
+      if (!terminal) return
+
+      terminal.hasUserMessage = false
+      updateTerminalReminderState(terminal.id, {
+        enabled: terminal.reminderEnabled,
+        hasUserMessage: false,
+        name: terminal.name,
+        cwd: terminal.cwd
+      })
+      addDebug('终端提醒就绪: ' + terminal.name, 'success')
+    })
+
     socket.off('terminal-exit')
     socket.on('terminal-exit', (data) => {
       addDebug('终端退出: ' + data.terminalId.substring(0, 8), 'warning')
@@ -1122,13 +1153,22 @@ async function createTerminal(cwd, name, existingId = null) {
   const terminalName = name || getTerminalNameFromCwd(cwd)
 
   addDebug((existingId ? '恢复终端: ' : '创建终端: ') + id.substring(0, 8) + ' ' + terminalName)
+  const reminderState = getTerminalReminderState(id)
 
   terminals.value.push({
     id,
     name: terminalName,
     cwd,
     createdAt: Date.now(),
-    reminderEnabled: false
+    reminderEnabled: reminderState.enabled,
+    hasUserMessage: reminderState.hasUserMessage
+  })
+
+  updateTerminalReminderState(id, {
+    enabled: reminderState.enabled,
+    hasUserMessage: reminderState.hasUserMessage,
+    name: terminalName,
+    cwd
   })
 
   // 切换到新终端
@@ -1224,6 +1264,16 @@ async function initXterm(id, index) {
   // xterm 输入直接发送到后端（用于物理键盘输入）
   term.onData((data) => {
     if (socket && socket.connected) {
+      const terminal = terminals.value.find(t => t.id === id)
+      if (terminal && data) {
+        terminal.hasUserMessage = true
+        updateTerminalReminderState(terminal.id, {
+          enabled: terminal.reminderEnabled,
+          hasUserMessage: true,
+          name: terminal.name,
+          cwd: terminal.cwd
+        })
+      }
       socket.emit('terminal-input', { terminalId: id, data })
     }
   })
@@ -1260,10 +1310,25 @@ function switchTerminal(index) {
   })
 }
 
-function toggleActiveTerminalReminder() {
+async function toggleActiveTerminalReminder() {
   const terminal = terminals.value[activeTerminalIndex.value]
   if (!terminal) return
+
+  if (!terminal.reminderEnabled) {
+    const allowed = await ensureTerminalReminderPermission()
+    if (!allowed) {
+      showToast('请允许通知权限后再开启提醒')
+      return
+    }
+  }
+
   terminal.reminderEnabled = !terminal.reminderEnabled
+  updateTerminalReminderState(terminal.id, {
+    enabled: terminal.reminderEnabled,
+    name: terminal.name,
+    cwd: terminal.cwd,
+    hasUserMessage: terminal.hasUserMessage
+  })
   addDebug(`终端提醒已${terminal.reminderEnabled ? '开启' : '关闭'}: ${terminal.name}`)
 }
 
@@ -1280,6 +1345,7 @@ function closeTerminal(index, { confirmClose = true } = {}) {
   }
 
   clearTerminalOutputQueue(terminal.id)
+  removeTerminalReminderState(terminal.id)
 
   // 通知服务器关闭终端
   if (socket) {

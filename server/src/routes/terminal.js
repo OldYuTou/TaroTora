@@ -32,6 +32,7 @@ const persistentSessions = new Map();
 const socketTerminals = new Map();
 
 const MAX_OUTPUT_BUFFER_SIZE = 10 * 1024 * 1024;
+const TERMINAL_REMINDER_IDLE_MS = 30 * 1000;
 
 // 自动清理已禁用 - 终端会一直保持运行直到用户手动关闭
 // 不再清理无连接的终端，用户需要通过 terminal-close 主动关闭
@@ -56,6 +57,44 @@ function appendOutputBuffer(session, data) {
   while (session.outputBufferSize > MAX_OUTPUT_BUFFER_SIZE && session.outputBuffer.length > 0) {
     session.outputBufferSize -= Buffer.byteLength(session.outputBuffer.shift(), 'utf8');
   }
+}
+
+function clearTerminalReminderTimer(session) {
+  if (session?.reminderIdleTimer) {
+    clearTimeout(session.reminderIdleTimer);
+    session.reminderIdleTimer = null;
+  }
+}
+
+function emitToTerminalConnections(namespace, session, eventName, data) {
+  session.connections.forEach(socketId => {
+    const clientSocket = namespace.sockets.get(socketId);
+    if (clientSocket) {
+      clientSocket.emit(eventName, data);
+    }
+  });
+}
+
+function scheduleTerminalReminder(namespace, session) {
+  if (!session.hasUserMessage) return;
+
+  clearTerminalReminderTimer(session);
+  const lastOutputAt = session.lastOutputAt;
+
+  session.reminderIdleTimer = setTimeout(() => {
+    if (!session.hasUserMessage || session.lastOutputAt !== lastOutputAt) {
+      return;
+    }
+
+    session.hasUserMessage = false;
+    session.reminderIdleTimer = null;
+
+    emitToTerminalConnections(namespace, session, 'terminal-reminder-ready', {
+      terminalId: session.id,
+      cwd: session.cwd,
+      quietMs: TERMINAL_REMINDER_IDLE_MS
+    });
+  }, TERMINAL_REMINDER_IDLE_MS);
 }
 
 /**
@@ -137,9 +176,12 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
       connections: new Set([socket.id]),
       createdAt: Date.now(),
       lastActivity: Date.now(),
+      lastOutputAt: 0,
       lastDisconnectTime: null,
       outputBuffer: [], // 输出缓存，用于恢复连接
-      outputBufferSize: 0
+      outputBufferSize: 0,
+      hasUserMessage: false,
+      reminderIdleTimer: null
     };
 
     persistentSessions.set(terminalId, session);
@@ -153,14 +195,11 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
     // 转发 PTY 输出到所有连接的客户端
     ptyProcess.onData((data) => {
       appendOutputBuffer(session, data);
+      session.lastOutputAt = Date.now();
 
       // 发送给所有连接的客户端
-      session.connections.forEach(socketId => {
-        const clientSocket = socket.nsp.sockets.get(socketId);
-        if (clientSocket) {
-          clientSocket.emit('terminal-output', { terminalId, data });
-        }
-      });
+      emitToTerminalConnections(socket.nsp, session, 'terminal-output', { terminalId, data });
+      scheduleTerminalReminder(socket.nsp, session);
     });
 
     // 处理 PTY 退出
@@ -168,12 +207,8 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
       console.log(`[Terminal] Process exited: ${terminalId}, exitCode: ${exitCode}`);
 
       // 通知所有连接的客户端
-      session.connections.forEach(socketId => {
-        const clientSocket = socket.nsp.sockets.get(socketId);
-        if (clientSocket) {
-          clientSocket.emit('terminal-exit', { terminalId, exitCode, signal });
-        }
-      });
+      emitToTerminalConnections(socket.nsp, session, 'terminal-exit', { terminalId, exitCode, signal });
+      clearTerminalReminderTimer(session);
 
       // 清理会话
       persistentSessions.delete(terminalId);
@@ -243,6 +278,9 @@ function terminalSocket(socket) {
     if (session && session.connections.has(socket.id)) {
       session.process.write(data);
       session.lastActivity = Date.now();
+      if (data) {
+        session.hasUserMessage = true;
+      }
     }
   });
 
@@ -266,6 +304,8 @@ function terminalSocket(socket) {
       } catch (err) {
         console.error(`[Terminal] Error killing process: ${err.message}`);
       }
+
+      clearTerminalReminderTimer(session);
 
       // 清理会话
       persistentSessions.delete(terminalId);

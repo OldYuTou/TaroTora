@@ -141,6 +141,11 @@ import { useRouter, useRoute } from 'vue-router'
 import { io } from 'socket.io-client'
 import axios from 'axios'
 import { normalizeServerUrl } from './utils/serverUrl'
+import {
+  getTerminalReminderState,
+  notifyTerminalReminder,
+  updateTerminalReminderState
+} from './utils/terminalReminder'
 
 const router = useRouter()
 const route = useRoute()
@@ -269,6 +274,13 @@ function removeNotification(id) {
   }
 }
 
+function getTerminalNameFromCwd(cwd) {
+  if (!cwd) return '终端'
+  const normalized = String(cwd).replace(/[\\/]+$/, '')
+  const parts = normalized.split(/[\\/]+/).filter(Boolean)
+  return parts.at(-1) || normalized || '终端'
+}
+
 function connectSocket() {
   const token = localStorage.getItem('auth_token')
   const serverUrl = normalizeServerUrl(localStorage.getItem('server_url') || '')
@@ -303,6 +315,31 @@ function connectSocket() {
   socket.on('notification', (data) => {
     console.log('收到通知:', data)
     addNotification(data)
+  })
+
+  socket.on('terminal-reminder-ready', async (data) => {
+    const reminderState = getTerminalReminderState(data.terminalId)
+    const terminalName = reminderState.name || getTerminalNameFromCwd(reminderState.cwd || data.cwd)
+
+    updateTerminalReminderState(data.terminalId, {
+      ...reminderState,
+      hasUserMessage: false,
+      name: terminalName,
+      cwd: reminderState.cwd || data.cwd || ''
+    })
+
+    if (!reminderState.enabled) return
+
+    const title = '终端提醒'
+    const body = `${terminalName} 会话有新消息`
+
+    addNotification({
+      title,
+      message: body,
+      type: 'info'
+    })
+
+    await notifyTerminalReminder({ title, body })
   })
 
   socket.on('disconnect', () => {

@@ -1008,5 +1008,36 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.32.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "新增终端提醒通知",
+    "changes": [
+      "服务端为每个持久化终端新增 hasUserMessage 和 reminderIdleTimer 状态，收到终端输入后标记待提醒",
+      "终端输出期间持续刷新 30 秒安静计时器，最后一次输出后 30 秒无新输出时发出 terminal-reminder-ready 事件并重置待提醒状态",
+      "新增 web/src/utils/terminalReminder.js，统一管理当次会话的终端提醒开关状态、待提醒状态以及本地通知权限和发送逻辑",
+      "移动端控制页创建或恢复终端时从会话级提醒状态恢复 reminderEnabled，发送输入、关闭终端和提醒就绪时同步更新状态",
+      "App.vue 全局监听 terminal-reminder-ready，只对已开启提醒的终端发送系统通知，并同时显示应用内通知提示“XX 会话有新消息”",
+      "引入 @capacitor/local-notifications 插件，Capacitor 同步后 APK 已包含 android.permission.POST_NOTIFICATIONS 权限",
+      "将版本提升到 1.4.33、Android versionCode 提升到 1987686，并重建同步 APK 与服务端静态资源",
+      "使用正式签名包覆盖安装到手机，并上传百度网盘 TaroTora/TaroTora-release-v1.4.33.apk"
+    ],
+    "verification": [
+      "server: node --check server/src/routes/terminal.js 通过",
+      "web: npm run build 通过，产物为 index-5ef67c70.js、index-df052854.css 和 web-15bd70cf.js",
+      "web: npm run cap:sync 通过，Android 侧识别到 @capacitor/local-notifications 插件",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: aapt 确认 versionCode=1987686、versionName=1.4.33，且包含 android.permission.POST_NOTIFICATIONS",
+      "APK: jar tf 确认包含 assets/public/assets/index-5ef67c70.js、assets/public/assets/index-df052854.css、assets/public/assets/web-15bd70cf.js",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "adb install -r .\\TaroTora-release-v1.4.33.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987686、versionName=1.4.33",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 10398",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.33、versionCode=1987686",
+      "https://REDACTED_DOMAIN 首页加载 index-5ef67c70.js 和 index-df052854.css",
+      "adb logcat -d -t 400 未发现 FATAL EXCEPTION、AndroidRuntime 或本地通知插件崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.33.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]

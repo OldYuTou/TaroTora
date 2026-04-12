@@ -1,6 +1,6 @@
 {
   "name": "remote-control-web",
-  "version": "1.4.32",
+  "version": "1.4.33",
   "description": "远程控制 Web 前端",
   "type": "module",
   "scripts": {
@@ -16,6 +16,7 @@
     "@capacitor/android": "^5.5.1",
     "@capacitor/app": "^5.0.6",
     "@capacitor/core": "^5.5.1",
+    "@capacitor/local-notifications": "^5.0.8",
     "@capacitor/splash-screen": "^5.0.6",
     "@element-plus/icons-vue": "^2.1.0",
     "axios": "^1.5.0",
