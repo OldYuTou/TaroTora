@@ -1,8 +1,8 @@
 {
-  "version": "1.4.28",
-  "versionCode": 1987681,
+  "version": "1.4.29",
+  "versionCode": 1987682,
   "filename": "TaroTora.apk",
-  "changelog": "缩小移动端终端右侧 viewport 覆盖层，避免遮挡行尾字符",
+  "changelog": "支持移动端终端长按选择文本并复制",
   "forceUpdate": false,
-  "updatedAt": "2026-04-12T23:00:40.770+08:00"
+  "updatedAt": "2026-04-13T00:20:08.580+08:00"
 }

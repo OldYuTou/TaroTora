@@ -233,6 +233,7 @@ const DOUBLE_TAP_DELAY = 320
 const TAP_MOVE_LIMIT = 18
 const GESTURE_THRESHOLD = 4
 const LONG_PRESS_DELAY = 550
+const LONG_PRESS_SELECT_MOVE_LIMIT = 6
 const TERMINAL_SCROLLBACK_LINES = 50000
 const TERMINAL_TOUCH_SCROLL_SENSITIVITY = 1.6
 const KEYBOARD_VISIBLE_THRESHOLD = 80
@@ -581,6 +582,14 @@ function forwardMouseToTerminal(type, point, index, buttons = 1) {
   }))
 }
 
+function selectTerminalWordAt(index, point) {
+  forwardMouseToTerminal('mousedown', point, index, 1)
+  forwardMouseToTerminal('mouseup', point, index, 0)
+  forwardMouseToTerminal('mousedown', point, index, 1)
+  forwardMouseToTerminal('mouseup', point, index, 0)
+  forwardMouseToTerminal('dblclick', point, index, 0)
+}
+
 function startTerminalSelection(index, touch) {
   if (!terminalTouchState || terminalTouchState.selectionStarted) return
   terminalTouchState.selectionStarted = true
@@ -648,7 +657,8 @@ function handleTerminalTouchStart(event, index) {
     scrollRemainder: 0,
     gesture: isDoubleTap ? 'input' : null,
     selectionStarted: false,
-    longPressTriggered: false
+    longPressTriggered: false,
+    selectionMoved: false
   }
 
   if (isDoubleTap) {
@@ -663,8 +673,11 @@ function handleTerminalTouchStart(event, index) {
   longPressTimer = setTimeout(() => {
     if (!terminalTouchState || terminalTouchState.gesture) return
     terminalTouchState.longPressTriggered = true
-    terminalTouchState.gesture = 'context'
-    showTerminalContextMenu(index, touch.clientX, touch.clientY)
+    terminalTouchState.gesture = 'select'
+    terminalTouchState.selectionStarted = true
+    forwardMouseToTerminal('mousedown', terminalTouchState.startPoint, index, 1)
+    showToast('拖动选择终端文本，松开后复制')
+    navigator.vibrate?.(15)
   }, LONG_PRESS_DELAY)
 }
 
@@ -688,6 +701,13 @@ function handleTerminalTouchMove(event) {
     scrollTerminalByTouch(terminalTouchState.index, deltaY)
     event.preventDefault()
   } else if (terminalTouchState.gesture === 'select') {
+    if (terminalTouchState.longPressTriggered) {
+      const moved = getDistance(
+        { x: touch.clientX, y: touch.clientY },
+        { x: terminalTouchState.startPoint.clientX, y: terminalTouchState.startPoint.clientY }
+      )
+      terminalTouchState.selectionMoved = terminalTouchState.selectionMoved || moved > LONG_PRESS_SELECT_MOVE_LIMIT
+    }
     startTerminalSelection(terminalTouchState.index, touch)
     forwardMouseToTerminal('mousemove', touch, terminalTouchState.index, 1)
     event.preventDefault()
@@ -711,7 +731,15 @@ function handleTerminalTouchEnd(event) {
     focusTerminalInput(state.index)
     event.preventDefault()
   } else if (state.gesture === 'select' && state.selectionStarted) {
-    forwardMouseToTerminal('mouseup', state.lastPoint, state.index, 0)
+    if (state.longPressTriggered && !state.selectionMoved) {
+      forwardMouseToTerminal('mouseup', state.lastPoint, state.index, 0)
+      selectTerminalWordAt(state.index, state.startPoint)
+    } else {
+      forwardMouseToTerminal('mouseup', state.lastPoint, state.index, 0)
+    }
+    setTimeout(() => {
+      showTerminalContextMenu(state.index, state.lastPoint.clientX, state.lastPoint.clientY)
+    }, 80)
     event.preventDefault()
   } else if (!state.gesture && !state.longPressTriggered) {
     lastTerminalTap = {

@@ -896,5 +896,33 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.28.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "支持移动端终端长按选择文本并复制",
+    "changes": [
+      "将移动端终端长按从直接弹出复制/粘贴菜单改为进入文本选择流程",
+      "长按后按住拖动会向 xterm 转发 mousedown/mousemove/mouseup，松手后弹出复制菜单",
+      "长按不拖动时尝试选中手指下的单词，并延迟 80ms 弹出复制菜单，给 xterm selection 状态更新时间",
+      "保留双击唤起键盘、竖向拖动滚动和横向拖动选择的原有交互",
+      "将版本提升到 1.4.29、Android versionCode 提升到 1987682，并重建同步 APK 与服务端静态资源",
+      "使用正式签名包覆盖安装到手机，并上传百度网盘 TaroTora/TaroTora-release-v1.4.29.apk"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-05187f3a.js 和 index-bfd67353.css",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987682、versionName=1.4.29",
+      "APK: jar tf 确认包含 assets/public/assets/index-05187f3a.js 和 assets/public/assets/index-bfd67353.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "adb install -r .\\TaroTora-release-v1.4.29.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987682、versionName=1.4.29",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 21222",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.29、versionCode=1987682",
+      "https://REDACTED_DOMAIN 首页加载 index-05187f3a.js 和 index-bfd67353.css",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.29.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]
