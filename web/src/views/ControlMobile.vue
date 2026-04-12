@@ -1846,15 +1846,19 @@ onUnmounted(() => {
   width: 100% !important;
   max-width: 100vw !important;
   background: #0d1117 !important;
+  z-index: 1 !important;
 }
 
 :deep(.xterm-viewport) {
-  width: 100% !important;
-  max-width: 100vw !important;
+  left: auto !important;
+  right: 0 !important;
+  width: 1px !important;
+  max-width: 1px !important;
   background: transparent !important;
   overflow-y: auto !important;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
+  z-index: 0 !important;
 }
 
 :deep(.xterm-viewport::-webkit-scrollbar) {

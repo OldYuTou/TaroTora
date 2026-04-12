@@ -868,5 +868,33 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.27.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "缩小移动端终端右侧滚动层覆盖范围",
+    "changes": [
+      "根据手机端反馈，终端最右侧仍有可视范围内的透明遮挡，约挡住最后一个字符的六分之一",
+      "保持 1.4.27 的手机端列数同步服务端 PTY 逻辑不变，不再改动终端可视宽度和列数",
+      "将移动端 .xterm-screen 提升到显示层上方，避免被 xterm 滚动 viewport 覆盖",
+      "将 .xterm-viewport 从覆盖整块终端内容区域缩小为右侧 1px 透明滚动轨，保留滚动状态但不再压住行尾字符",
+      "将版本提升到 1.4.28、Android versionCode 提升到 1987681，并重建同步 APK 与服务端静态资源",
+      "使用正式签名包覆盖安装到手机，并上传百度网盘 TaroTora/TaroTora-release-v1.4.28.apk"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-9e15e9e7.js 和 index-9300ce64.css",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987681、versionName=1.4.28",
+      "APK: jar tf 确认包含 assets/public/assets/index-9e15e9e7.js 和 assets/public/assets/index-9300ce64.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "adb install -r .\\TaroTora-release-v1.4.28.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987681、versionName=1.4.28",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 20606",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.28、versionCode=1987681",
+      "https://REDACTED_DOMAIN 首页加载 index-9e15e9e7.js 和 index-9300ce64.css",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.28.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]

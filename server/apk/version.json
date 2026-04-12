@@ -1,8 +1,8 @@
 {
-  "version": "1.4.27",
-  "versionCode": 1987680,
+  "version": "1.4.28",
+  "versionCode": 1987681,
   "filename": "TaroTora.apk",
-  "changelog": "按手机端终端列数同步服务端 PTY 宽度，避免中文行尾溢出",
+  "changelog": "缩小移动端终端右侧 viewport 覆盖层，避免遮挡行尾字符",
   "forceUpdate": false,
-  "updatedAt": "2026-04-12T22:21:09.939+08:00"
+  "updatedAt": "2026-04-12T23:00:40.770+08:00"
 }
