@@ -225,10 +225,10 @@ const terminalContextMenu = ref({
 
 const DOUBLE_TAP_DELAY = 320
 const TAP_MOVE_LIMIT = 18
-const GESTURE_THRESHOLD = 8
+const GESTURE_THRESHOLD = 4
 const LONG_PRESS_DELAY = 550
 const TERMINAL_SCROLLBACK_LINES = 50000
-const TERMINAL_TOUCH_SCROLL_SENSITIVITY = 2.5
+const TERMINAL_TOUCH_SCROLL_SENSITIVITY = 1.6
 
 let terminalTouchState = null
 let longPressTimer = null
@@ -332,17 +332,36 @@ function getTerminalLineHeight(index) {
 
 function scrollTerminalByTouch(index, deltaY) {
   const term = getTerminalInstance(index)?.xterm
+  const viewport = getTerminalViewport(index)
+  if (!term || !viewport) return
+
+  const pixelDelta = -deltaY * TERMINAL_TOUCH_SCROLL_SENSITIVITY
+  const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight)
+  const currentScrollTop = viewport.scrollTop || 0
+  const targetScrollTop = Math.max(0, Math.min(maxScrollTop, currentScrollTop + pixelDelta))
+
+  if (Math.abs(targetScrollTop - currentScrollTop) >= 0.25) {
+    viewport.scrollTop = targetScrollTop
+    viewport.dispatchEvent(new Event('scroll', { bubbles: true }))
+    requestAnimationFrame(() => term.refresh?.(0, term.rows - 1))
+    return
+  }
+
   const buffer = term?.buffer?.active
-  if (!term || !buffer) return
+  if (!buffer || !terminalTouchState) return
 
   const lineHeight = getTerminalLineHeight(index)
-  const lineDelta = (deltaY / lineHeight) * TERMINAL_TOUCH_SCROLL_SENSITIVITY
+  terminalTouchState.scrollRemainder += pixelDelta
+  const lineDelta = Math.trunc(terminalTouchState.scrollRemainder / lineHeight)
+  if (lineDelta === 0) return
+
   const maxLine = Math.max(0, buffer.baseY || 0)
   const currentLine = buffer.viewportY || 0
-  const targetLine = Math.max(0, Math.min(maxLine, Math.round(currentLine + lineDelta)))
+  const targetLine = Math.max(0, Math.min(maxLine, currentLine + lineDelta))
 
   if (targetLine !== currentLine) {
     term.scrollToLine(targetLine)
+    terminalTouchState.scrollRemainder -= lineDelta * lineHeight
   }
 }
 

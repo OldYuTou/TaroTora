@@ -293,5 +293,34 @@
       "https://REDACTED_DOMAIN 首页加载 index-4baebeab.js 和 index-4fd5b528.css",
       "bdpan ls TaroTora/TaroTora-release-v1.4.4.apk 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "优化移动端终端像素级触摸滚动方向并安装到手机",
+    "changes": [
+      "移动端终端触摸滚动优先直接调整 xterm viewport 的 scrollTop，实现比 scrollToLine 更接近像素级的滚动手感",
+      "保留按行滚动兜底，避免 viewport 到边界或无法响应时手势完全失效",
+      "将触摸手势识别阈值从 8px 降到 4px，让浏览模式下拖动更快进入滚动",
+      "根据手机端实测反馈反转触摸滚动方向",
+      "将版本提升到 1.4.6、Android versionCode 提升到 1987659，并重建同步 APK 与服务端静态资源",
+      "将正式包上传到百度网盘 TaroTora/TaroTora-release-v1.4.6.apk",
+      "使用正式签名包覆盖安装到手机，保留应用数据"
+    ],
+    "verification": [
+      "web: npm run build 通过",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987659、versionName=1.4.6",
+      "APK: jar tf 确认包含 assets/public/assets/index-91f71a6f.js 和 index-f170d0f0.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.6、versionCode=1987659",
+      "https://REDACTED_DOMAIN 首页加载 index-91f71a6f.js 和 index-f170d0f0.css",
+      "adb install -r .\\TaroTora-release-v1.4.6.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987659、versionName=1.4.6",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 27879",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.6.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]

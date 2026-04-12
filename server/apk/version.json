@@ -1,8 +1,8 @@
 {
-  "version": "1.4.4",
-  "versionCode": 1987657,
+  "version": "1.4.6",
+  "versionCode": 1987659,
   "filename": "TaroTora.apk",
-  "changelog": "修复移动端终端拖动仍难以滚动的问题：改为根据 xterm viewportY/baseY 直接定位历史行",
+  "changelog": "优化移动端终端触摸滚动：按像素驱动 xterm viewport，并按手机端预期反转滑动方向",
   "forceUpdate": false,
-  "updatedAt": "2026-04-12T12:14:01.392+08:00"
+  "updatedAt": "2026-04-12T12:29:09.021+08:00"
 }
