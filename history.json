@@ -699,5 +699,32 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.20.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "增强移动端终端 Claude 输出滚底",
+    "changes": [
+      "根据手机实测反馈，1.4.20 虽在 xterm.write 回调中滚底，但 Claude 流式回复后仍可能不滚到最下面",
+      "增强 scrollTerminalToBottom：除调用 xterm scrollToBottom 和 scrollToLine(baseY) 外，同步设置 .xterm-viewport.scrollTop 到 scrollHeight-clientHeight 并派发 scroll 事件",
+      "将 terminal-output 后的 keepTerminalCursorVisible 重复帧数从默认 2 提升到 4，覆盖 WebView/xterm 渲染和滚动条更新的时间差",
+      "将版本提升到 1.4.21、Android versionCode 提升到 1987674，并重建同步 APK 与服务端静态资源",
+      "使用正式签名包覆盖安装到手机，并上传百度网盘 TaroTora/TaroTora-release-v1.4.21.apk"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-846078e4.js 和 index-7486cba4.css",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987674、versionName=1.4.21",
+      "APK: jar tf 确认包含 assets/public/assets/index-846078e4.js 和 index-7486cba4.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "adb install -r .\\TaroTora-release-v1.4.21.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987674、versionName=1.4.21",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 32754",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.21、versionCode=1987674",
+      "https://REDACTED_DOMAIN 首页加载 index-846078e4.js 和 index-7486cba4.css",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.21.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]

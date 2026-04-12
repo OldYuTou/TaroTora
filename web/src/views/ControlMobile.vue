@@ -423,6 +423,11 @@ function scrollTerminalToBottom(index) {
   if (buffer) {
     term.scrollToLine?.(Math.max(0, buffer.baseY || 0))
   }
+  const viewport = getTerminalViewport(index)
+  if (viewport) {
+    viewport.scrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight)
+    viewport.dispatchEvent(new Event('scroll', { bubbles: true }))
+  }
   term.options.smoothScrollDuration = originalSmoothScrollDuration
 }
 
@@ -960,7 +965,7 @@ function initSocket() {
         const index = terminals.value.findIndex(t => t.id === data.terminalId)
         term.xterm.write(data.data, () => {
           if (index !== -1) {
-            keepTerminalCursorVisible(index)
+            keepTerminalCursorVisible(index, false, 4)
           }
         })
       }
