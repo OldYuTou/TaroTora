@@ -522,5 +522,33 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.13.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "修复移动端控制页初始半屏高度基准",
+    "changes": [
+      "在 App 顶层新增 --app-viewport-height 运行时变量，移动端取 innerHeight、documentElement.clientHeight、visualViewport.height、screen.height/devicePixelRatio 的最大值作为真实高度，规避 Android WebView 中 100vh 被键盘残留压成半屏的问题",
+      "将 app-container 和移动端控制页高度改为使用 --app-viewport-height，确保刚进入控制页时终端按真实屏幕高度占满可用区域",
+      "监听 window resize 与 visualViewport resize/scroll，持续刷新真实高度变量，避免切换键盘、横竖屏或 WebView 状态变化后高度滞留",
+      "将版本提升到 1.4.14、Android versionCode 提升到 1987667，并重建同步 APK 与服务端静态资源",
+      "将正式包上传到百度网盘 TaroTora/TaroTora-release-v1.4.14.apk",
+      "使用正式签名包覆盖安装到手机，保留应用数据"
+    ],
+    "verification": [
+      "web: npm run build 通过",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987667、versionName=1.4.14",
+      "APK: jar tf 确认包含 assets/public/assets/index-24f37a1f.js 和 index-ecd584eb.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.14、versionCode=1987667",
+      "https://REDACTED_DOMAIN 首页加载 index-24f37a1f.js 和 index-ecd584eb.css",
+      "adb install -r .\\TaroTora-release-v1.4.14.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987667、versionName=1.4.14",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 32708",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.14.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]

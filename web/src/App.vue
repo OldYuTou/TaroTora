@@ -17,7 +17,7 @@
 -->
 
 <template>
-  <div class="app-container">
+  <div class="app-container" :style="appContainerStyle">
     <!-- 桌面端侧边栏 -->
     <aside v-if="!isMobile && !isLoginPage" class="sidebar">
       <div class="sidebar-header">
@@ -147,9 +147,30 @@ const route = useRoute()
 const connected = ref(false)
 const isMobile = ref(window.innerWidth <= 768)
 const notifications = ref([])
+const appViewportHeight = ref('100vh')
 
 const isLoginPage = computed(() => route.path === '/login')
 const isControlMobilePage = computed(() => route.path === '/control-mobile' || route.path === '/terminal')
+const appContainerStyle = computed(() => ({
+  '--app-viewport-height': appViewportHeight.value
+}))
+
+function getScreenCssHeight() {
+  const height = window.screen?.height || 0
+  const ratio = window.devicePixelRatio || 1
+  return ratio > 0 ? height / ratio : 0
+}
+
+function updateAppViewportHeight() {
+  const measuredHeight = Math.max(
+    window.innerHeight || 0,
+    document.documentElement.clientHeight || 0,
+    window.visualViewport?.height || 0,
+    getScreenCssHeight()
+  )
+
+  appViewportHeight.value = measuredHeight > 0 ? `${Math.round(measuredHeight)}px` : '100vh'
+}
 
 // 桌面端导航
 const desktopNavItems = [
@@ -333,12 +354,15 @@ function logout() {
 
 function handleResize() {
   isMobile.value = window.innerWidth <= 768
+  updateAppViewportHeight()
 }
 
 onMounted(() => {
   checkAuth()
   handleResize()
   window.addEventListener('resize', handleResize)
+  window.visualViewport?.addEventListener('resize', updateAppViewportHeight)
+  window.visualViewport?.addEventListener('scroll', updateAppViewportHeight)
 
   router.beforeEach((to, from, next) => {
     if (to.path === '/login') {
@@ -356,6 +380,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  window.visualViewport?.removeEventListener('resize', updateAppViewportHeight)
+  window.visualViewport?.removeEventListener('scroll', updateAppViewportHeight)
 })
 </script>
 
@@ -391,7 +417,7 @@ body {
 
 .app-container {
   display: flex;
-  height: 100vh;
+  height: var(--app-viewport-height, 100vh);
   background: var(--termius-bg);
 }
 
@@ -553,7 +579,7 @@ body {
 }
 
 .main-content.mobile-control-page {
-  height: calc(100vh - var(--mobile-nav-height));
+  height: calc(var(--app-viewport-height, 100vh) - var(--mobile-nav-height));
   padding-bottom: 0;
 }
 
