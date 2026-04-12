@@ -550,5 +550,30 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.14.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "修复移动端终端右侧空白",
+    "changes": [
+      "将移动端控制页、终端容器、终端面板、xterm 容器和移动端控制页外层宽度约束为 100vw，避免右侧留出空白区域",
+      "为控制页根元素新增 ResizeObserver，容器尺寸变化时自动对当前 xterm 多帧 fit 和 refresh，使终端列数按手机全宽重新计算",
+      "终端创建、终端切换、窗口 resize、键盘 viewport 同步时统一调用 fitTerminalToContainer，避免 xterm 保持旧宽度",
+      "将版本提升到 1.4.15、Android versionCode 提升到 1987668，并重建同步 APK 与服务端静态资源",
+      "将正式包上传到百度网盘 TaroTora/TaroTora-release-v1.4.15.apk",
+      "当前 adb devices 无设备，未能执行本轮手机安装"
+    ],
+    "verification": [
+      "web: npm run build 通过",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987668、versionName=1.4.15",
+      "APK: jar tf 确认包含 assets/public/assets/index-cd89b4a1.js 和 index-38566759.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.15、versionCode=1987668",
+      "https://REDACTED_DOMAIN 首页加载 index-cd89b4a1.js 和 index-38566759.css",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.15.apk 返回上传成功，bdpan ls 确认远端文件存在",
+      "adb devices 返回空列表，未执行 adb install"
+    ]
   }
 ]

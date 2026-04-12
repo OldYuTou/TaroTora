@@ -579,6 +579,8 @@ body {
 }
 
 .main-content.mobile-control-page {
+  width: 100vw;
+  max-width: 100vw;
   height: calc(var(--app-viewport-height, 100vh) - var(--mobile-nav-height));
   padding-bottom: 0;
 }

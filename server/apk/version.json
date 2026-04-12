@@ -1,8 +1,8 @@
 {
-  "version": "1.4.14",
-  "versionCode": 1987667,
+  "version": "1.4.15",
+  "versionCode": 1987668,
   "filename": "TaroTora.apk",
-  "changelog": "修复移动端控制页初始半屏：使用运行时真实视口高度变量替代 Android WebView 中不稳定的 100vh",
+  "changelog": "修复移动端终端右侧空白：控制页按 100vw 铺满并在容器尺寸变化时自动重新 fit xterm",
   "forceUpdate": false,
-  "updatedAt": "2026-04-12T17:14:32.799+08:00"
+  "updatedAt": "2026-04-12T17:41:14.574+08:00"
 }

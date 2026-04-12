@@ -7,6 +7,7 @@
 
 <template>
   <div
+    ref="controlMobileRef"
     class="control-mobile"
     :class="{ 'keyboard-active': isKeyboardVisible }"
     :style="controlMobileStyle"
@@ -217,6 +218,7 @@ import { getDefaultServerUrl, normalizeServerUrl } from '../utils/serverUrl'
 const terminals = ref([])
 const activeTerminalIndex = ref(0)
 const tabsRef = ref(null)
+const controlMobileRef = ref(null)
 const terminalRefs = ref([])
 const inputRefs = ref([])
 const terminalContextMenu = ref({
@@ -248,6 +250,7 @@ let terminalTouchState = null
 let longPressTimer = null
 let lastTerminalTap = null
 let keyboardCloseSyncTimer = null
+let terminalResizeObserver = null
 
 // 调试信息
 const debugInfo = ref([])
@@ -392,6 +395,23 @@ function refreshTerminalViewport(index = activeTerminalIndex.value, shouldFit = 
   })
 }
 
+function fitTerminalToContainer(index = activeTerminalIndex.value, repeatFrames = 2) {
+  const term = getTerminalInstance(index)
+  const container = terminalRefs.value[index]
+  if (!term || !container) return
+
+  const fit = (framesLeft) => {
+    term.fitAddon?.fit()
+    term.xterm?.refresh?.(0, term.xterm.rows - 1)
+
+    if (framesLeft > 0) {
+      requestAnimationFrame(() => fit(framesLeft - 1))
+    }
+  }
+
+  requestAnimationFrame(() => fit(repeatFrames))
+}
+
 function scrollTerminalToBottom(index) {
   const term = getTerminalInstance(index)?.xterm
   if (!term) return
@@ -451,7 +471,7 @@ function syncKeyboardViewport() {
   if (!viewport || !layoutHeight) {
     isKeyboardVisible.value = false
     keyboardViewportHeight.value = ''
-    refreshTerminalViewport(activeTerminalIndex.value, true)
+    fitTerminalToContainer(activeTerminalIndex.value)
     return
   }
 
@@ -468,7 +488,7 @@ function syncKeyboardViewport() {
     if (inputMode.value) {
       keepTerminalCursorVisible(activeTerminalIndex.value, true)
     } else {
-      refreshTerminalViewport(activeTerminalIndex.value, true)
+      fitTerminalToContainer(activeTerminalIndex.value)
     }
   })
 }
@@ -1096,10 +1116,11 @@ async function initXterm(id, index) {
 
   // 触发初始 resize
   setTimeout(() => {
-    fitAddon.fit()
+    fitTerminalToContainer(index)
     // 初始化覆盖层状态（默认为浏览模式）
     updateOverlayState(index)
   }, 100)
+  setTimeout(() => fitTerminalToContainer(index), 350)
 }
 
 // 切换终端
@@ -1109,7 +1130,7 @@ function switchTerminal(index) {
   nextTick(() => {
     const term = termInstances[index]
     if (term) {
-      term.fitAddon.fit()
+      fitTerminalToContainer(index)
     }
     // 更新当前终端的覆盖层状态
     updateOverlayState(index)
@@ -1238,11 +1259,7 @@ async function checkPendingTerminal() {
 
 // 监听窗口大小变化
 function handleResize() {
-  const term = termInstances[activeTerminalIndex.value]
-  if (term) {
-    term.fitAddon.fit()
-    term.xterm.refresh(0, term.xterm.rows - 1)
-  }
+  fitTerminalToContainer(activeTerminalIndex.value)
   syncKeyboardViewport()
 }
 
@@ -1312,6 +1329,12 @@ onMounted(() => {
   }, 500)
   loadExistingTerminals()
   syncKeyboardViewport()
+  if (typeof ResizeObserver !== 'undefined' && controlMobileRef.value) {
+    terminalResizeObserver = new ResizeObserver(() => {
+      fitTerminalToContainer(activeTerminalIndex.value)
+    })
+    terminalResizeObserver.observe(controlMobileRef.value)
+  }
   window.addEventListener('resize', handleResize)
   window.visualViewport?.addEventListener('resize', handleVisualViewportResize)
   window.visualViewport?.addEventListener('scroll', handleVisualViewportResize)
@@ -1324,6 +1347,8 @@ onMounted(() => {
 onUnmounted(() => {
   clearTerminalTouch()
   clearKeyboardCloseSync()
+  terminalResizeObserver?.disconnect()
+  terminalResizeObserver = null
   hideTerminalContextMenu()
   window.removeEventListener('resize', handleResize)
   window.visualViewport?.removeEventListener('resize', handleVisualViewportResize)
@@ -1343,6 +1368,8 @@ onUnmounted(() => {
 
 <style scoped>
 .control-mobile {
+  width: 100vw;
+  max-width: 100vw;
   height: 100%;
   max-height: 100%;
   display: flex;
@@ -1465,6 +1492,8 @@ onUnmounted(() => {
 
 /* 终端容器 */
 .terminal-container {
+  width: 100%;
+  max-width: 100vw;
   flex: 1;
   overflow: hidden;
   position: relative;
@@ -1477,6 +1506,8 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
+  width: 100%;
+  max-width: 100vw;
   display: none;
   flex-direction: column;
   min-height: 0;
@@ -1517,6 +1548,8 @@ onUnmounted(() => {
 }
 
 .terminal-body {
+  width: 100%;
+  max-width: 100vw;
   flex: 1;
   overflow: hidden;
   padding: 0;
@@ -1525,6 +1558,7 @@ onUnmounted(() => {
 
 .xterm-container {
   width: 100%;
+  max-width: 100vw;
   height: 100%;
 }
 
@@ -1704,6 +1738,8 @@ onUnmounted(() => {
 
 /* 终端容器 - 相对定位，用于放置覆盖层 */
 .terminal-body {
+  width: 100%;
+  max-width: 100vw;
   flex: 1;
   overflow: hidden;
   padding: 0;
@@ -1713,6 +1749,7 @@ onUnmounted(() => {
 
 .xterm-container {
   width: 100%;
+  max-width: 100vw;
   height: 100%;
 }
 
@@ -1772,16 +1809,19 @@ onUnmounted(() => {
 /* xterm 样式覆盖 */
 :deep(.xterm) {
   width: 100% !important;
+  max-width: 100vw !important;
   height: 100% !important;
 }
 
 :deep(.xterm-screen) {
   width: 100% !important;
+  max-width: 100vw !important;
   background: #0d1117 !important;
 }
 
 :deep(.xterm-viewport) {
   width: 100% !important;
+  max-width: 100vw !important;
   background: #0d1117 !important;
   overflow-y: auto !important;
 }
