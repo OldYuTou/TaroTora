@@ -409,5 +409,34 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.9.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "增强移动端终端收起键盘后的强制回底",
+    "changes": [
+      "将键盘收起后的光标保持窗口从 700ms 增强为 2200ms，覆盖更长的 Android 键盘收起动画和后续 viewport 同步",
+      "将固定延迟点同步改为每 80ms 的稳定期循环同步，直到窗口结束后再做最终多帧回底",
+      "新增 scrollTerminalToBottom，同时调用 xterm.scrollToBottom、scrollToLine(baseY) 并同步 .xterm-viewport.scrollTop，避免 fit 后内部 viewport 恢复旧位置",
+      "在聚焦输入时清理残留的键盘收起同步定时器，避免旧定时器影响新一轮输入",
+      "将版本提升到 1.4.10、Android versionCode 提升到 1987663，并重建同步 APK 与服务端静态资源",
+      "将正式包上传到百度网盘 TaroTora/TaroTora-release-v1.4.10.apk",
+      "使用正式签名包覆盖安装到手机，保留应用数据"
+    ],
+    "verification": [
+      "web: npm run build 通过",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987663、versionName=1.4.10",
+      "APK: jar tf 确认包含 assets/public/assets/index-32763671.js 和 index-d8d46bac.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.10、versionCode=1987663",
+      "https://REDACTED_DOMAIN 首页加载 index-32763671.js 和 index-d8d46bac.css",
+      "adb install -r .\\TaroTora-release-v1.4.10.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987663、versionName=1.4.10",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 22212",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.10.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]

@@ -236,8 +236,8 @@ const TERMINAL_TOUCH_SCROLL_SENSITIVITY = 1.6
 const KEYBOARD_VISIBLE_THRESHOLD = 80
 const KEYBOARD_SAFE_GAP = 12
 const MOBILE_NAV_HEIGHT = 64
-const KEYBOARD_CLOSE_SETTLE_MS = 700
-const KEYBOARD_CLOSE_SYNC_DELAYS = [120, 320, 680]
+const KEYBOARD_CLOSE_SETTLE_MS = 2200
+const KEYBOARD_CLOSE_SYNC_INTERVAL = 80
 
 const isKeyboardVisible = ref(false)
 const visualViewportHeight = ref(`calc(100vh - ${MOBILE_NAV_HEIGHT}px)`)
@@ -249,6 +249,7 @@ let terminalTouchState = null
 let longPressTimer = null
 let lastTerminalTap = null
 let keepCursorAfterKeyboardUntil = 0
+let keyboardCloseSyncTimer = null
 
 // 调试信息
 const debugInfo = ref([])
@@ -393,17 +394,63 @@ function refreshTerminalViewport(index = activeTerminalIndex.value, shouldFit = 
   })
 }
 
-function keepTerminalCursorVisible(index = activeTerminalIndex.value, shouldFit = false) {
+function scrollTerminalToBottom(index) {
+  const term = getTerminalInstance(index)?.xterm
+  if (!term) return
+
+  term.scrollToBottom?.()
+  const buffer = term.buffer?.active
+  if (buffer) {
+    term.scrollToLine?.(Math.max(0, buffer.baseY || 0))
+  }
+
+  const viewport = getTerminalViewport(index)
+  if (viewport) {
+    viewport.scrollTop = viewport.scrollHeight
+    viewport.dispatchEvent(new Event('scroll', { bubbles: true }))
+  }
+}
+
+function keepTerminalCursorVisible(index = activeTerminalIndex.value, shouldFit = false, repeatFrames = 2) {
   const term = getTerminalInstance(index)
   if (!term) return
 
-  requestAnimationFrame(() => {
+  const sync = (framesLeft) => {
     if (shouldFit) {
       term.fitAddon?.fit()
     }
-    term.xterm?.scrollToBottom?.()
+    scrollTerminalToBottom(index)
     term.xterm?.refresh?.(0, term.xterm.rows - 1)
-  })
+
+    if (framesLeft > 0) {
+      requestAnimationFrame(() => sync(framesLeft - 1))
+    }
+  }
+
+  requestAnimationFrame(() => sync(repeatFrames))
+}
+
+function clearKeyboardCloseSync() {
+  if (keyboardCloseSyncTimer) {
+    clearInterval(keyboardCloseSyncTimer)
+    keyboardCloseSyncTimer = null
+  }
+}
+
+function startKeyboardCloseSync(index = activeTerminalIndex.value) {
+  clearKeyboardCloseSync()
+  keepCursorAfterKeyboardUntil = Date.now() + KEYBOARD_CLOSE_SETTLE_MS
+  syncKeyboardViewport()
+
+  keyboardCloseSyncTimer = setInterval(() => {
+    syncKeyboardViewport()
+    keepTerminalCursorVisible(index, true, 2)
+
+    if (Date.now() >= keepCursorAfterKeyboardUntil) {
+      clearKeyboardCloseSync()
+      keepTerminalCursorVisible(index, true, 4)
+    }
+  }, KEYBOARD_CLOSE_SYNC_INTERVAL)
 }
 
 function syncKeyboardViewport() {
@@ -447,6 +494,7 @@ function getDistance(a, b) {
 
 function focusTerminalInput(index = activeTerminalIndex.value) {
   hideTerminalContextMenu()
+  clearKeyboardCloseSync()
   const input = inputRefs.value[index]
   if (!input) return
 
@@ -465,11 +513,7 @@ function focusTerminalInput(index = activeTerminalIndex.value) {
 
 function handleMobileInputBlur() {
   inputMode.value = false
-  keepCursorAfterKeyboardUntil = Date.now() + KEYBOARD_CLOSE_SETTLE_MS
-  syncKeyboardViewport()
-  KEYBOARD_CLOSE_SYNC_DELAYS.forEach(delay => {
-    setTimeout(syncKeyboardViewport, delay)
-  })
+  startKeyboardCloseSync(activeTerminalIndex.value)
 }
 
 // 保持覆盖层常驻：浏览、滚动和选择都经过覆盖层手势处理，输入通过双击或键盘按钮触发。
@@ -1286,6 +1330,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearTerminalTouch()
+  clearKeyboardCloseSync()
   hideTerminalContextMenu()
   window.removeEventListener('resize', handleResize)
   window.visualViewport?.removeEventListener('resize', handleVisualViewportResize)

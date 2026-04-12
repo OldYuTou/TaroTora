@@ -1,8 +1,8 @@
 {
-  "version": "1.4.9",
-  "versionCode": 1987662,
+  "version": "1.4.10",
+  "versionCode": 1987663,
   "filename": "TaroTora.apk",
-  "changelog": "修复移动端终端收起键盘后光标回弹：键盘收起动画期间持续同步视口并保持终端滚到底部",
+  "changelog": "修复移动端终端收起键盘后光标仍回弹：收起动画稳定期内持续强制终端回到底部",
   "forceUpdate": false,
-  "updatedAt": "2026-04-12T12:54:52.183+08:00"
+  "updatedAt": "2026-04-12T13:02:42.902+08:00"
 }
