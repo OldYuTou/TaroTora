@@ -466,5 +466,33 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.11.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "修复移动端终端收起键盘回弹和工具栏偏移",
+    "changes": [
+      "将键盘收起同步改为等待 visualViewport 接近全屏并连续稳定后，只执行一次终端高度恢复、fit 和回底，避免 Android 键盘动画期间反复重排 xterm",
+      "键盘收起过程中保留最后一次键盘态终端高度，避免先回到底部后又被中间高度拉回造成视觉回弹",
+      "为移动端控制页容器高度增加正常内容区高度上限，避免异常 viewport 高度把底部终端工具栏挤到可视区域外",
+      "将版本提升到 1.4.12、Android versionCode 提升到 1987665，并重建同步 APK 与服务端静态资源",
+      "将正式包上传到百度网盘 TaroTora/TaroTora-release-v1.4.12.apk",
+      "使用正式签名包覆盖安装到手机，保留应用数据"
+    ],
+    "verification": [
+      "web: npm run build 通过",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987665、versionName=1.4.12",
+      "APK: jar tf 确认包含 assets/public/assets/index-c94ccc21.js 和 index-454b98ec.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.12、versionCode=1987665",
+      "adb install -r .\\TaroTora-release-v1.4.12.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987665、versionName=1.4.12",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 488",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.12.apk 返回上传成功，bdpan ls 确认远端文件存在",
+      "https://REDACTED_DOMAIN 首页加载 index-c94ccc21.js 和 index-454b98ec.css",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志"
+    ]
   }
 ]

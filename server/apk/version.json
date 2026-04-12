@@ -1,8 +1,8 @@
 {
-  "version": "1.4.11",
-  "versionCode": 1987664,
+  "version": "1.4.12",
+  "versionCode": 1987665,
   "filename": "TaroTora.apk",
-  "changelog": "修复移动端终端收起键盘后回底动画回弹：程序性回底临时关闭 xterm 平滑滚动并避免 viewport 旧位置回写",
+  "changelog": "修复移动端终端收起键盘后回弹和底部工具栏偏移：等待键盘视口稳定后再恢复终端高度并重新适配",
   "forceUpdate": false,
-  "updatedAt": "2026-04-12T13:10:21.302+08:00"
+  "updatedAt": "2026-04-12T13:20:36.063+08:00"
 }
