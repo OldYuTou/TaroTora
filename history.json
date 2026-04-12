@@ -726,5 +726,32 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.21.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "隐藏移动端终端右侧滚动槽遮罩",
+    "changes": [
+      "根据手机端观察，终端右侧仍有空白且部分字符像被遮罩挡住，定位到 xterm 默认 .xterm-viewport 右侧滚动层/滚动槽可能覆盖字符边缘",
+      "将移动端 ControlMobile.vue 中 .xterm-viewport 背景改为 transparent，避免滚动层背景遮挡终端右侧字符",
+      "隐藏 .xterm-viewport 的 WebKit/Firefox/旧 Edge 滚动条视觉宽度，保留现有覆盖层手势滚动逻辑",
+      "将版本提升到 1.4.22、Android versionCode 提升到 1987675，并重建同步 APK 与服务端静态资源",
+      "使用正式签名包覆盖安装到手机，并上传百度网盘 TaroTora/TaroTora-release-v1.4.22.apk"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-6ba70b8e.js 和 index-bf24a685.css",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987675、versionName=1.4.22",
+      "APK: jar tf 确认包含 assets/public/assets/index-6ba70b8e.js 和 index-bf24a685.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "adb install -r .\\TaroTora-release-v1.4.22.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987675、versionName=1.4.22",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 12110",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.22、versionCode=1987675",
+      "https://REDACTED_DOMAIN 首页加载 index-6ba70b8e.js 和 index-bf24a685.css",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.22.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]

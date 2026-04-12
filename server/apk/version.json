@@ -1,8 +1,8 @@
 {
-  "version": "1.4.21",
-  "versionCode": 1987674,
+  "version": "1.4.22",
+  "versionCode": 1987675,
   "filename": "TaroTora.apk",
-  "changelog": "增强移动端终端新输出后的底部跟随，修复 Claude 流式回复不自动滚到底部",
+  "changelog": "隐藏移动端终端右侧 xterm 滚动槽，避免遮挡右边缘字符",
   "forceUpdate": false,
-  "updatedAt": "2026-04-12T21:12:52.096+08:00"
+  "updatedAt": "2026-04-12T21:27:02.886+08:00"
 }

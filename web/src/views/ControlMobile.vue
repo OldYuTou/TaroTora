@@ -1828,8 +1828,16 @@ onUnmounted(() => {
 :deep(.xterm-viewport) {
   width: 100% !important;
   max-width: 100vw !important;
-  background: #0d1117 !important;
+  background: transparent !important;
   overflow-y: auto !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar) {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
 }
 
 :deep(.xterm .xterm-screen canvas) {
