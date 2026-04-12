@@ -235,6 +235,7 @@ const GESTURE_THRESHOLD = 4
 const LONG_PRESS_DELAY = 550
 const TERMINAL_SCROLLBACK_LINES = 50000
 const TERMINAL_TOUCH_SCROLL_SENSITIVITY = 1.6
+const TERMINAL_RIGHT_SAFE_PIXELS = 6
 const KEYBOARD_VISIBLE_THRESHOLD = 80
 const KEYBOARD_SAFE_GAP = 12
 
@@ -390,6 +391,7 @@ function refreshTerminalViewport(index = activeTerminalIndex.value, shouldFit = 
   requestAnimationFrame(() => {
     if (shouldFit) {
       term.fitAddon?.fit()
+      shrinkTerminalToSafeWidth(index)
     }
     term.xterm?.refresh?.(0, term.xterm.rows - 1)
   })
@@ -402,6 +404,7 @@ function fitTerminalToContainer(index = activeTerminalIndex.value, repeatFrames 
 
   const fit = (framesLeft) => {
     term.fitAddon?.fit()
+    shrinkTerminalToSafeWidth(index)
     term.xterm?.refresh?.(0, term.xterm.rows - 1)
 
     if (framesLeft > 0) {
@@ -410,6 +413,23 @@ function fitTerminalToContainer(index = activeTerminalIndex.value, repeatFrames 
   }
 
   requestAnimationFrame(() => fit(repeatFrames))
+}
+
+function shrinkTerminalToSafeWidth(index = activeTerminalIndex.value) {
+  const term = getTerminalInstance(index)?.xterm
+  const container = terminalRefs.value[index]
+  if (!term || !container || !term.cols) return
+
+  const canvas = container.querySelector('.xterm-screen canvas')
+  const canvasWidth = canvas?.getBoundingClientRect?.().width || 0
+  const cellWidth = canvasWidth > 0 ? canvasWidth / term.cols : container.clientWidth / term.cols
+  if (!Number.isFinite(cellWidth) || cellWidth <= 0) return
+
+  const safeWidth = Math.max(0, container.clientWidth - TERMINAL_RIGHT_SAFE_PIXELS)
+  const safeCols = Math.max(2, Math.floor(safeWidth / cellWidth))
+  if (safeCols < term.cols) {
+    term.resize(safeCols, term.rows)
+  }
 }
 
 function scrollTerminalToBottom(index) {
@@ -438,6 +458,7 @@ function keepTerminalCursorVisible(index = activeTerminalIndex.value, shouldFit 
   const sync = (framesLeft) => {
     if (shouldFit) {
       term.fitAddon?.fit()
+      shrinkTerminalToSafeWidth(index)
     }
     scrollTerminalToBottom(index)
     term.xterm?.refresh?.(0, term.xterm.rows - 1)
@@ -1838,10 +1859,6 @@ onUnmounted(() => {
   width: 0 !important;
   height: 0 !important;
   display: none !important;
-}
-
-:deep(.xterm .xterm-screen canvas) {
-  width: 100% !important;
 }
 
 :global(.terminal-toast) {

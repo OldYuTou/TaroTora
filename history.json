@@ -753,5 +753,33 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.22.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "修复移动端终端右边缘字符裁切",
+    "changes": [
+      "根据手机端观察，终端最右侧字符仍被垂直裁切，判断不再是滚动槽视觉层，而是 xterm 列宽/画布宽度刚好超过真实可视边界",
+      "移除 .xterm .xterm-screen canvas 的 width: 100% 强制拉伸，避免 xterm canvas 被 CSS 二次缩放后产生边缘裁切",
+      "新增 shrinkTerminalToSafeWidth，在 fit 后根据 canvas 单字符宽度和容器真实宽度保留 6px 右侧安全边界，必要时减少 1 列终端列数",
+      "在普通 fit、键盘/视口变化触发的 fit、以及保持光标可见时的 fit 中都应用右侧安全边界",
+      "将版本提升到 1.4.23、Android versionCode 提升到 1987676，并重建同步 APK 与服务端静态资源",
+      "使用正式签名包覆盖安装到手机，并上传百度网盘 TaroTora/TaroTora-release-v1.4.23.apk"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-3e08d7e2.js 和 index-ceadefa0.css",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987676、versionName=1.4.23",
+      "APK: jar tf 确认包含 assets/public/assets/index-3e08d7e2.js 和 index-ceadefa0.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "adb install -r .\\TaroTora-release-v1.4.23.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987676、versionName=1.4.23",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 28149",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.23、versionCode=1987676",
+      "https://REDACTED_DOMAIN 首页加载 index-3e08d7e2.js 和 index-ceadefa0.css",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.23.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]
