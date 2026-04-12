@@ -138,10 +138,10 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { io } from 'socket.io-client'
 import axios from 'axios'
 import { normalizeServerUrl } from './utils/serverUrl'
 import { notifyTerminalReminder } from './utils/terminalReminder'
+import { ensureControlSocket } from './utils/controlSocket'
 
 const router = useRouter()
 const route = useRoute()
@@ -291,6 +291,34 @@ async function handleTerminalReminderReady(data) {
   await notifyTerminalReminder({ title, body })
 }
 
+function handleSocketConnect() {
+  const token = localStorage.getItem('auth_token')
+  console.log('WebSocket connected')
+  connected.value = true
+  if (token) {
+    socket.emit('auth', token)
+  }
+}
+
+function handleSocketAuth(status) {
+  if (status === 'success') {
+    connected.value = true
+  }
+}
+
+function handleSocketNotification(data) {
+  console.log('收到通知:', data)
+  addNotification(data)
+}
+
+function handleSocketDisconnect() {
+  connected.value = false
+}
+
+function handleSocketConnectError() {
+  connected.value = false
+}
+
 function connectSocket() {
   const token = localStorage.getItem('auth_token')
   const serverUrl = normalizeServerUrl(localStorage.getItem('server_url') || '')
@@ -298,50 +326,32 @@ function connectSocket() {
   if (!token || !serverUrl) return
   localStorage.setItem('server_url', serverUrl)
 
-  if (window.controlSocket?.connected) {
-    connected.value = true
-    return
-  }
+  socket = ensureControlSocket({ serverUrl, token })
+  if (!socket) return
 
-  if (socket) socket.disconnect()
+  socket.off('connect', handleSocketConnect)
+  socket.on('connect', handleSocketConnect)
 
-  socket = io(serverUrl, {
-    auth: { token },
-    transports: ['websocket', 'polling']
-  })
+  socket.off('auth', handleSocketAuth)
+  socket.on('auth', handleSocketAuth)
 
-  socket.on('connect', () => {
-    console.log('WebSocket connected')
-    connected.value = true
-    socket.emit('auth', token)
-  })
-
-  socket.on('auth', (status) => {
-    if (status === 'success') {
-      connected.value = true
-    }
-  })
-
-  socket.on('notification', (data) => {
-    console.log('收到通知:', data)
-    addNotification(data)
-  })
+  socket.off('notification', handleSocketNotification)
+  socket.on('notification', handleSocketNotification)
 
   socket.off('terminal-reminder-ready', handleTerminalReminderReady)
   socket.on('terminal-reminder-ready', handleTerminalReminderReady)
 
-  socket.on('disconnect', () => {
-    connected.value = false
-  })
+  socket.off('disconnect', handleSocketDisconnect)
+  socket.on('disconnect', handleSocketDisconnect)
 
-  socket.on('connect_error', () => {
-    connected.value = false
-  })
+  socket.off('connect_error', handleSocketConnectError)
+  socket.on('connect_error', handleSocketConnectError)
 
   window.controlSocket = socket
 
   if (socket.connected) {
     connected.value = true
+    socket.emit('auth', token)
   }
 }
 

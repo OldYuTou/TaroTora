@@ -30,7 +30,7 @@
           </div>
           <h1>TaroTora</h1>
           <p class="subtitle">Remote Control System</p>
-          <span class="version-badge">v1.4.34</span>
+          <span class="version-badge">v1.4.35</span>
         </div>
 
         <form class="login-form" @submit.prevent="handleLogin">
@@ -122,9 +122,9 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { io } from 'socket.io-client'
 import axios from 'axios'
 import { getDefaultServerUrl, normalizeServerUrl } from '../utils/serverUrl'
+import { ensureControlSocket } from '../utils/controlSocket'
 
 const router = useRouter()
 const loading = ref(false)
@@ -161,22 +161,38 @@ async function handleLogin() {
       axios.defaults.baseURL = loginForm.server
       axios.defaults.headers.common['Authorization'] = `Bearer ${loginForm.token}`
 
-      const socket = io(loginForm.server, {
-        auth: { token: loginForm.token },
-        transports: ['websocket', 'polling']
+      const socket = ensureControlSocket({
+        serverUrl: loginForm.server,
+        token: loginForm.token
       })
 
-      socket.on('connect', () => {
+      if (!socket) {
+        throw new Error('SOCKET_UNAVAILABLE')
+      }
+
+      const handleConnect = () => {
+        socket.off('connect_error', handleConnectError)
         window.controlSocket = socket
         // 移动端跳转到控制页面（终端）
         const isMobile = window.innerWidth <= 768
         router.push(isMobile ? '/control-mobile' : '/files')
-      })
+      }
 
-      socket.on('connect_error', () => {
+      const handleConnectError = () => {
+        socket.off('connect', handleConnect)
         error.value = 'WebSocket 连接失败'
         loading.value = false
-      })
+      }
+
+      socket.off('connect', handleConnect)
+      socket.on('connect', handleConnect)
+
+      socket.off('connect_error', handleConnectError)
+      socket.on('connect_error', handleConnectError)
+
+      if (socket.connected) {
+        handleConnect()
+      }
     }
   } catch (err) {
     console.error('Login error:', err)

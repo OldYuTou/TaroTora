@@ -1067,5 +1067,31 @@
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.34.apk 返回上传成功，bdpan ls 确认远端文件存在",
       "adb install -r .\\TaroTora-release-v1.4.34.apk 因当前无已连接设备返回 no devices/emulators found"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "修复终端提醒通知未送达",
+    "changes": [
+      "新增 web/src/utils/controlSocket.js，统一管理全局唯一的 Socket.IO 连接，避免根组件、登录页和控制页各自创建不同 socket",
+      "修复 App.vue 在 window.controlSocket 已存在时直接返回、未绑定 terminal-reminder-ready 全局监听的问题，改为始终复用同一 socket 并绑定提醒通知、连接状态和应用内通知事件",
+      "修复 Login.vue 自动登录与 ControlMobile.vue 初始化时可能重复创建 socket 的问题，终端创建、提醒事件和全局通知现在共享同一条连接",
+      "本次 30 秒提醒不触发的根因是终端会话绑定在控制页 socket 上，而通知监听挂在另一个 socket 上，服务端事件发到了前者，App 全局通知却在后者上等待",
+      "将版本提升到 1.4.35、Android versionCode 提升到 1987688，并重建同步 APK 与服务端静态资源"
+    ],
+    "verification": [
+      "server: 终端提醒最小化 socket 自测通过，Write-Output 后 30 秒收到 terminal-reminder-ready 事件",
+      "web: npm install --package-lock-only 通过",
+      "web: npm run build 通过，产物为 index-c7eaf5b5.js、index-8fa0b996.css 和 web-f58ab02c.js",
+      "web: npm run cap:sync 通过，Android 资源同步完成",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: 使用 web/android/android.keystore 和 alias=tarotora 重新签名正式包",
+      "APK: aapt 确认 versionCode=1987688、versionName=1.4.35，且包含 android.permission.POST_NOTIFICATIONS",
+      "APK: jar tf 确认包含 assets/public/assets/index-c7eaf5b5.js、assets/public/assets/index-8fa0b996.css、assets/public/assets/web-f58ab02c.js",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.35、versionCode=1987688",
+      "https://REDACTED_DOMAIN 首页加载 index-c7eaf5b5.js 和 index-8fa0b996.css",
+      "adb devices 当前无已连接设备，因此本轮未执行安装验证"
+    ]
   }
 ]

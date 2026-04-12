@@ -229,6 +229,7 @@ import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
 import { getDefaultServerUrl, normalizeServerUrl } from '../utils/serverUrl'
 import { ensureTerminalReminderPermission } from '../utils/terminalReminder'
+import { ensureControlSocket } from '../utils/controlSocket'
 
 // 终端列表
 const terminals = ref([])
@@ -1054,43 +1055,44 @@ function handleSocketTerminalReminderUpdated(data) {
   }
 }
 
+function handleSocketConnect() {
+  addDebug('Socket 已连接', 'success')
+}
+
+function handleSocketConnectError(err) {
+  addDebug('Socket 连接错误: ' + err.message, 'error')
+}
+
+function handleSocketDisconnect(reason) {
+  addDebug('Socket 断开: ' + reason, 'warning')
+}
+
 // 初始化 Socket 连接
 function initSocket() {
   const serverUrl = normalizeServerUrl(localStorage.getItem('server_url') || '') || getDefaultServerUrl()
   const token = localStorage.getItem('auth_token') || 'REDACTED_TOKEN'
+  const hadExistingSocket = !!window.controlSocket
 
   addDebug('初始化 Socket, URL: ' + serverUrl)
-  addDebug('window.io 可用: ' + !!window.io)
-  addDebug('已有 socket: ' + !!window.controlSocket)
+  addDebug('已有 socket: ' + hadExistingSocket)
 
-  // 优先使用现有的 socket
-  if (window.controlSocket) {
-    socket = window.controlSocket
-    addDebug('使用已有 socket, 状态: ' + (socket.connected ? '已连接' : '未连接'))
-  } else if (window.io) {
-    // 创建新 socket
-    addDebug('创建新 socket: ' + serverUrl)
-    socket = window.io(serverUrl, {
-      auth: { token },
-      transports: ['websocket', 'polling']
-    })
-    window.controlSocket = socket
+  socket = ensureControlSocket({ serverUrl, token })
 
-    // 监听连接事件
-    socket.on('connect', () => {
-      addDebug('Socket 已连接', 'success')
-    })
-
-    socket.on('connect_error', (err) => {
-      addDebug('Socket 连接错误: ' + err.message, 'error')
-    })
-
-    socket.on('disconnect', (reason) => {
-      addDebug('Socket 断开: ' + reason, 'warning')
-    })
-  } else {
-    addDebug('错误: window.io 不可用!', 'error')
+  if (!socket) {
+    addDebug('错误: 无法初始化 socket', 'error')
+    return
   }
+
+  addDebug((hadExistingSocket ? '复用' : '创建') + ' socket, 状态: ' + (socket.connected ? '已连接' : '未连接'))
+
+  socket.off('connect', handleSocketConnect)
+  socket.on('connect', handleSocketConnect)
+
+  socket.off('connect_error', handleSocketConnectError)
+  socket.on('connect_error', handleSocketConnectError)
+
+  socket.off('disconnect', handleSocketDisconnect)
+  socket.on('disconnect', handleSocketDisconnect)
 
   if (socket) {
     addDebug('绑定终端事件...')
