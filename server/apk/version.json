@@ -1,8 +1,8 @@
 {
-  "version": "1.4.15",
-  "versionCode": 1987668,
+  "version": "1.4.16",
+  "versionCode": 1987669,
   "filename": "TaroTora.apk",
-  "changelog": "修复移动端终端右侧空白：控制页按 100vw 铺满并在容器尺寸变化时自动重新 fit xterm",
+  "changelog": "修复移动端终端右侧微小空白：xterm fit 后按容器余量自动补列贴齐右边缘",
   "forceUpdate": false,
-  "updatedAt": "2026-04-12T17:41:14.574+08:00"
+  "updatedAt": "2026-04-12T20:37:21.907+08:00"
 }

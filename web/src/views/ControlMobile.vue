@@ -402,6 +402,7 @@ function fitTerminalToContainer(index = activeTerminalIndex.value, repeatFrames 
 
   const fit = (framesLeft) => {
     term.fitAddon?.fit()
+    stretchTerminalColumnsToEdge(term, container)
     term.xterm?.refresh?.(0, term.xterm.rows - 1)
 
     if (framesLeft > 0) {
@@ -410,6 +411,24 @@ function fitTerminalToContainer(index = activeTerminalIndex.value, repeatFrames 
   }
 
   requestAnimationFrame(() => fit(repeatFrames))
+}
+
+function stretchTerminalColumnsToEdge(term, container) {
+  const xterm = term?.xterm
+  if (!xterm || !container) return
+
+  const containerWidth = container.getBoundingClientRect().width
+  if (!containerWidth) return
+
+  const cellWidth = xterm._core?._renderService?.dimensions?.css?.cell?.width
+  if (!cellWidth || cellWidth <= 0) return
+
+  const fittedWidth = xterm.cols * cellWidth
+  const remainingWidth = containerWidth - fittedWidth
+  if (remainingWidth <= 2) return
+
+  const extraCols = Math.min(2, Math.ceil(remainingWidth / cellWidth))
+  xterm.resize(xterm.cols + extraCols, xterm.rows)
 }
 
 function scrollTerminalToBottom(index) {

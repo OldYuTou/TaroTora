@@ -589,5 +589,32 @@
       "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987668、versionName=1.4.15",
       "adb shell pidof com.tarotora.remotecontrol 返回 PID 20462"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "修复移动端终端右侧微小空白",
+    "changes": [
+      "在 fitTerminalToContainer 后新增 stretchTerminalColumnsToEdge，根据容器真实宽度和 xterm 单字符宽度计算剩余空白，必要时最多补 2 列让终端贴齐右边缘",
+      "保留上一版 100vw 横向铺满和 ResizeObserver 自动 fit 逻辑，减少容器尺寸变化后的旧列宽残留",
+      "将版本提升到 1.4.16、Android versionCode 提升到 1987669，并重建同步 APK 与服务端静态资源",
+      "将正式包上传到百度网盘 TaroTora/TaroTora-release-v1.4.16.apk",
+      "使用正式签名包覆盖安装到手机，保留应用数据"
+    ],
+    "verification": [
+      "web: npm run build 通过",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987669、versionName=1.4.16",
+      "APK: jar tf 确认包含 assets/public/assets/index-78967597.js 和 index-d03ab6ef.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.16、versionCode=1987669",
+      "https://REDACTED_DOMAIN 首页加载 index-78967597.js 和 index-d03ab6ef.css",
+      "adb install -r .\\TaroTora-release-v1.4.16.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987669、versionName=1.4.16",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 1529",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.16.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]
