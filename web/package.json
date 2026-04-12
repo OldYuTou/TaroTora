@@ -1,6 +1,6 @@
 {
   "name": "remote-control-web",
-  "version": "1.4.17",
+  "version": "1.4.20",
   "description": "远程控制 Web 前端",
   "type": "module",
   "scripts": {

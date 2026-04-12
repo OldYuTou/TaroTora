@@ -957,11 +957,12 @@ function initSocket() {
       addDebug('收到输出: ' + data.terminalId.substring(0, 8) + '...')
       const term = termInstances.find(t => t.id === data.terminalId)
       if (term) {
-        term.xterm.write(data.data)
-        if (inputMode.value) {
-          const index = terminals.value.findIndex(t => t.id === data.terminalId)
-          keepTerminalCursorVisible(index)
-        }
+        const index = terminals.value.findIndex(t => t.id === data.terminalId)
+        term.xterm.write(data.data, () => {
+          if (index !== -1) {
+            keepTerminalCursorVisible(index)
+          }
+        })
       }
     })
 
@@ -1811,21 +1812,18 @@ onUnmounted(() => {
   width: 100% !important;
   max-width: 100vw !important;
   height: 100% !important;
-  overflow-x: hidden !important;
 }
 
 :deep(.xterm-screen) {
   width: 100% !important;
   max-width: 100vw !important;
   background: #0d1117 !important;
-  overflow-x: hidden !important;
 }
 
 :deep(.xterm-viewport) {
   width: 100% !important;
   max-width: 100vw !important;
   background: #0d1117 !important;
-  overflow-x: hidden !important;
   overflow-y: auto !important;
 }
 

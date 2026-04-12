@@ -1,8 +1,8 @@
 {
-  "version": "1.4.17",
-  "versionCode": 1987670,
+  "version": "1.4.20",
+  "versionCode": 1987673,
   "filename": "TaroTora.apk",
-  "changelog": "修复移动端终端 Claude 长行越界：撤销额外补列并隐藏横向溢出",
+  "changelog": "修复移动端终端新输出后始终自动滚动到底部",
   "forceUpdate": false,
-  "updatedAt": "2026-04-12T20:44:17.718+08:00"
+  "updatedAt": "2026-04-12T21:07:03.442+08:00"
 }

@@ -644,5 +644,60 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.17.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "回退移动端终端布局到 1.4.15 行为",
+    "changes": [
+      "尝试直接安装 TaroTora-release-v1.4.15.apk，但 Android 因当前 versionCode=1987670 高于旧包 1987668 拒绝降级安装",
+      "将 web/src/views/ControlMobile.vue 回退到 1.4.15 行为，撤销 1.4.16 的额外补列和 1.4.17 的横向溢出隐藏改动",
+      "保持更高版本号重新发布为 1.4.18、Android versionCode=1987671，避免 Android 降级限制",
+      "重新构建同步 APK 与服务端静态资源，并使用正式签名包覆盖安装到手机",
+      "将正式包上传到百度网盘 TaroTora/TaroTora-release-v1.4.18.apk"
+    ],
+    "verification": [
+      "adb install -r -d .\\TaroTora-release-v1.4.15.apk 返回 INSTALL_FAILED_VERSION_DOWNGRADE，确认不能直接降级",
+      "web: npm run build 通过",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987671、versionName=1.4.18",
+      "APK: jar tf 确认包含 assets/public/assets/index-5308e343.js 和 index-998efb82.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "adb install -r .\\TaroTora-release-v1.4.18.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987671、versionName=1.4.18",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 22815",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.18、versionCode=1987671",
+      "https://REDACTED_DOMAIN 首页加载 index-5308e343.js 和 index-998efb82.css",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.18.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "修复移动端终端新输出始终滚到底部",
+    "changes": [
+      "定位到回退后的 terminal-output 逻辑只在 inputMode=true 时调用 keepTerminalCursorVisible，导致 Claude 输出期间若视口停在中间，输出结束后不会自动跟随到底部",
+      "按最新需求改为终端收到新输出时无条件在 xterm.write 回调中调用 keepTerminalCursorVisible，让视口始终跟随输出滚到底部",
+      "撤销中间尝试的“用户上滑时暂停跟随”状态逻辑，避免留下新输出不自动到底部的例外",
+      "保留 1.4.18 对 1.4.15 终端布局行为的回退结果，将版本提升到 1.4.20、Android versionCode 提升到 1987673",
+      "重新构建同步 APK 与服务端静态资源，使用正式签名包覆盖安装到手机，并上传百度网盘 TaroTora/TaroTora-release-v1.4.20.apk"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-825d9c1b.js 和 index-22d8d8a0.css",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987673、versionName=1.4.20",
+      "APK: jar tf 确认包含 assets/public/assets/index-825d9c1b.js 和 index-22d8d8a0.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "adb install -r .\\TaroTora-release-v1.4.20.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987673、versionName=1.4.20",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 26882",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.20、versionCode=1987673",
+      "https://REDACTED_DOMAIN 首页加载 index-825d9c1b.js 和 index-22d8d8a0.css",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.20.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]
