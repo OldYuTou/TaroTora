@@ -616,5 +616,33 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.16.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-12",
+    "summary": "修复移动端终端 Claude 长行越界",
+    "changes": [
+      "撤销 1.4.16 的 xterm 额外补列逻辑，避免终端列数超过实际手机可视宽度导致 Claude 长行绘制到右边缘外",
+      "为 xterm、xterm-screen、xterm-viewport 增加 overflow-x: hidden，防止横向内容撑出终端区域",
+      "保留 100vw 铺满和 ResizeObserver 自动 fit 逻辑，以容器真实宽度为准重新适配 xterm",
+      "将版本提升到 1.4.17、Android versionCode 提升到 1987670，并重建同步 APK 与服务端静态资源",
+      "将正式包上传到百度网盘 TaroTora/TaroTora-release-v1.4.17.apk",
+      "使用正式签名包覆盖安装到手机，保留应用数据"
+    ],
+    "verification": [
+      "web: npm run build 通过",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987670、versionName=1.4.17",
+      "APK: jar tf 确认包含 assets/public/assets/index-b624fb25.js 和 index-1b7ad2f1.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.17、versionCode=1987670",
+      "https://REDACTED_DOMAIN 首页加载 index-b624fb25.js 和 index-1b7ad2f1.css",
+      "adb install -r .\\TaroTora-release-v1.4.17.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987670、versionName=1.4.17",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 13274",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.17.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]
