@@ -104,6 +104,21 @@
 
       <!-- 终端工具栏 -->
       <div class="terminal-toolbar">
+        <button
+          class="tool-btn reminder-toggle"
+          :class="{ active: terminals[activeTerminalIndex]?.reminderEnabled }"
+          :aria-pressed="terminals[activeTerminalIndex]?.reminderEnabled ? 'true' : 'false'"
+          title="提醒"
+          @click="toggleActiveTerminalReminder"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            <path d="M4 4 2 6"></path>
+            <path d="M20 4 22 6"></path>
+          </svg>
+          <span>提醒</span>
+        </button>
         <button class="tool-btn" @click="showNewTerminalDialog">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -1112,7 +1127,8 @@ async function createTerminal(cwd, name, existingId = null) {
     id,
     name: terminalName,
     cwd,
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    reminderEnabled: false
   })
 
   // 切换到新终端
@@ -1242,6 +1258,13 @@ function switchTerminal(index) {
     // 更新当前终端的覆盖层状态
     updateOverlayState(index)
   })
+}
+
+function toggleActiveTerminalReminder() {
+  const terminal = terminals.value[activeTerminalIndex.value]
+  if (!terminal) return
+  terminal.reminderEnabled = !terminal.reminderEnabled
+  addDebug(`终端提醒已${terminal.reminderEnabled ? '开启' : '关闭'}: ${terminal.name}`)
 }
 
 // 关闭终端
@@ -1744,6 +1767,12 @@ onUnmounted(() => {
 .tool-btn.mode-toggle.active {
   color: #3fb950;
   background: rgba(63, 185, 80, 0.15);
+  border-radius: 8px;
+}
+
+.tool-btn.reminder-toggle.active {
+  color: #f2cc60;
+  background: rgba(242, 204, 96, 0.14);
   border-radius: 8px;
 }
 

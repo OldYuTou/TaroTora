@@ -980,5 +980,33 @@
       "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
       "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.31.apk 返回上传成功，bdpan ls 确认远端文件存在"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "新增移动端终端提醒开关",
+    "changes": [
+      "在移动端控制页终端底部工具栏最左侧新增提醒按钮，使用闹钟图标显示当前状态",
+      "提醒按钮绑定当前活动终端的 reminderEnabled 变量，点击可在开启和关闭之间切换",
+      "每个终端创建和恢复时 reminderEnabled 默认为 false，仅保存在当前前端会话的 terminals 状态中，不写入持久化存储",
+      "新增提醒按钮开启态样式，亮起时使用黄色高亮，关闭时保持原有灰色未激活状态",
+      "将版本提升到 1.4.32、Android versionCode 提升到 1987685，并重建同步 APK 与服务端静态资源",
+      "使用正式签名包覆盖安装到手机，并上传百度网盘 TaroTora/TaroTora-release-v1.4.32.apk"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-a1f211c7.js 和 index-12fcdc89.css",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug 通过",
+      "android: .\\gradlew.bat assembleRelease 通过",
+      "APK: aapt 确认 versionCode=1987685、versionName=1.4.32",
+      "APK: jar tf 确认包含 assets/public/assets/index-a1f211c7.js 和 assets/public/assets/index-12fcdc89.css",
+      "APK: apksigner verify 确认正式包 v1/v2/v3 签名通过，证书为 REDACTED_RELEASE_FINGERPRINT",
+      "adb install -r .\\TaroTora-release-v1.4.32.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987685、versionName=1.4.32",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 362",
+      "https://REDACTED_DOMAIN/api/app/version 返回 version=1.4.32、versionCode=1987685",
+      "https://REDACTED_DOMAIN 首页加载 index-a1f211c7.js 和 index-12fcdc89.css",
+      "adb logcat -d -t 300 未发现 FATAL EXCEPTION 或 AndroidRuntime 崩溃日志",
+      "bdpan upload .\\TaroTora.apk TaroTora/TaroTora-release-v1.4.32.apk 返回上传成功，bdpan ls 确认远端文件存在"
+    ]
   }
 ]
