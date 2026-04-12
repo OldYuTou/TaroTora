@@ -530,6 +530,7 @@ body {
   flex: 1;
   overflow: auto;
   background: var(--termius-bg);
+  min-height: 0;
 }
 
 .main-content.login-page {
@@ -540,6 +541,7 @@ body {
 
 .main-content.has-mobile-nav {
   padding-bottom: var(--mobile-nav-height);
+  overflow: hidden;
 }
 
 /* 移动端底部导航 */

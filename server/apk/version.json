@@ -1,8 +1,8 @@
 {
-  "version": "1.4.7",
-  "versionCode": 1987660,
+  "version": "1.4.8",
+  "versionCode": 1987661,
   "filename": "TaroTora.apk",
-  "changelog": "修复移动端终端输入时键盘遮挡光标：根据 visualViewport 收缩终端高度并保持光标在键盘上方",
+  "changelog": "修复移动端终端键盘避让和默认高度：终端默认占满屏幕，键盘弹出时使用 adjustResize 和 visualViewport 保持光标可见",
   "forceUpdate": false,
-  "updatedAt": "2026-04-12T12:40:10.758+08:00"
+  "updatedAt": "2026-04-12T12:47:41.637+08:00"
 }

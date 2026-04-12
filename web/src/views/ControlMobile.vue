@@ -235,9 +235,10 @@ const TERMINAL_SCROLLBACK_LINES = 50000
 const TERMINAL_TOUCH_SCROLL_SENSITIVITY = 1.6
 const KEYBOARD_VISIBLE_THRESHOLD = 80
 const KEYBOARD_SAFE_GAP = 12
+const MOBILE_NAV_HEIGHT = 64
 
 const isKeyboardVisible = ref(false)
-const visualViewportHeight = ref('100%')
+const visualViewportHeight = ref(`calc(100vh - ${MOBILE_NAV_HEIGHT}px)`)
 const controlMobileStyle = computed(() => ({
   '--control-mobile-height': visualViewportHeight.value
 }))
@@ -408,16 +409,17 @@ function syncKeyboardViewport() {
 
   if (!viewport || !layoutHeight) {
     isKeyboardVisible.value = false
-    visualViewportHeight.value = '100%'
+    visualViewportHeight.value = `calc(100vh - ${MOBILE_NAV_HEIGHT}px)`
     refreshTerminalViewport(activeTerminalIndex.value, true)
     return
   }
 
   const keyboardOverlap = Math.max(0, layoutHeight - viewport.height - viewport.offsetTop)
-  isKeyboardVisible.value = inputMode.value && keyboardOverlap > KEYBOARD_VISIBLE_THRESHOLD
-  visualViewportHeight.value = isKeyboardVisible.value
+  const viewportShrunk = viewport.height < layoutHeight - KEYBOARD_VISIBLE_THRESHOLD
+  isKeyboardVisible.value = inputMode.value && (keyboardOverlap > KEYBOARD_VISIBLE_THRESHOLD || viewportShrunk)
+  visualViewportHeight.value = inputMode.value
     ? `${Math.max(220, viewport.height - KEYBOARD_SAFE_GAP)}px`
-    : '100%'
+    : `calc(100vh - ${MOBILE_NAV_HEIGHT}px)`
 
   nextTick(() => {
     if (inputMode.value) {
@@ -1296,12 +1298,13 @@ onUnmounted(() => {
 
 <style scoped>
 .control-mobile {
-  height: var(--control-mobile-height, 100%);
-  max-height: var(--control-mobile-height, 100%);
+  height: var(--control-mobile-height, calc(100vh - 64px));
+  max-height: var(--control-mobile-height, calc(100vh - 64px));
   display: flex;
   flex-direction: column;
   background: #0d1117;
   overflow: hidden;
+  min-height: 0;
 }
 
 .control-mobile.keyboard-active {
@@ -1420,6 +1423,7 @@ onUnmounted(() => {
   flex: 1;
   overflow: hidden;
   position: relative;
+  min-height: 0;
 }
 
 .terminal-panel {
@@ -1430,6 +1434,7 @@ onUnmounted(() => {
   bottom: 0;
   display: none;
   flex-direction: column;
+  min-height: 0;
 }
 
 .terminal-panel.active {
@@ -1470,6 +1475,7 @@ onUnmounted(() => {
   flex: 1;
   overflow: hidden;
   padding: 0;
+  min-height: 0;
 }
 
 .xterm-container {
@@ -1501,10 +1507,8 @@ onUnmounted(() => {
 
 /* 终端工具栏 */
 .terminal-toolbar {
-  position: fixed;
-  bottom: 56px;
-  left: 0;
-  right: 0;
+  flex-shrink: 0;
+  position: relative;
   display: flex;
   justify-content: center;
   gap: 40px;
@@ -1659,6 +1663,7 @@ onUnmounted(() => {
   overflow: hidden;
   padding: 0;
   position: relative;
+  min-height: 0;
 }
 
 .xterm-container {
