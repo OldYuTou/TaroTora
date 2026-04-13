@@ -32,7 +32,7 @@ const persistentSessions = new Map();
 const socketTerminals = new Map();
 
 const MAX_OUTPUT_BUFFER_SIZE = 10 * 1024 * 1024;
-const TERMINAL_REMINDER_IDLE_MS = 30 * 1000;
+const TERMINAL_REMINDER_IDLE_MS = 5 * 1000;
 
 // 自动清理已禁用 - 终端会一直保持运行直到用户手动关闭
 // 不再清理无连接的终端，用户需要通过 terminal-close 主动关闭

@@ -1093,5 +1093,19 @@
       "https://REDACTED_DOMAIN 首页加载 index-c7eaf5b5.js 和 index-8fa0b996.css",
       "adb devices 当前无已连接设备，因此本轮未执行安装验证"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "将终端提醒间隔调整为5秒",
+    "changes": [
+      "将 server/src/routes/terminal.js 中的 TERMINAL_REMINDER_IDLE_MS 从 30 秒调整为 5 秒",
+      "终端在停止输出 5 秒后即触发 terminal-reminder-ready，减少等待时间",
+      "本次仅涉及服务端提醒计时逻辑，无需重新打包 APK"
+    ],
+    "verification": [
+      "server: node --check server/src/routes/terminal.js 通过",
+      "server: 终端提醒最小化 socket 自测通过，Write-Output 后约 5 秒收到 terminal-reminder-ready 事件",
+      "server: 已重启 3000 端口服务并确认 /health 返回 status=ok"
+    ]
   }
 ]
