@@ -33,6 +33,7 @@ const socketTerminals = new Map();
 
 const MAX_OUTPUT_BUFFER_SIZE = 10 * 1024 * 1024;
 const TERMINAL_REMINDER_IDLE_MS = 5 * 1000;
+let terminalReminderSequence = 0;
 
 // 自动清理已禁用 - 终端会一直保持运行直到用户手动关闭
 // 不再清理无连接的终端，用户需要通过 terminal-close 主动关闭
@@ -78,6 +79,82 @@ function clearTerminalReminderTimer(session) {
   }
 }
 
+function clearPendingTerminalReminder(session) {
+  if (session) {
+    session.pendingReminder = null;
+  }
+}
+
+function buildPendingTerminalReminder(session) {
+  terminalReminderSequence += 1;
+  return {
+    reminderId: `${session.id}:${terminalReminderSequence}`,
+    terminalId: session.id,
+    cwd: session.cwd,
+    name: session.displayName,
+    quietMs: TERMINAL_REMINDER_IDLE_MS,
+    readyAt: Date.now()
+  };
+}
+
+function getTerminalReminderState() {
+  let enabledCount = 0;
+  let pendingCount = 0;
+
+  persistentSessions.forEach((session) => {
+    if (session.reminderEnabled) {
+      enabledCount += 1;
+    }
+    if (session.pendingReminder) {
+      pendingCount += 1;
+    }
+  });
+
+  return {
+    enabledCount,
+    pendingCount,
+    hasEnabledReminders: enabledCount > 0
+  };
+}
+
+function pullPendingTerminalReminders() {
+  const reminders = [];
+
+  persistentSessions.forEach((session) => {
+    if (!session.pendingReminder) return;
+    reminders.push({ ...session.pendingReminder });
+    clearPendingTerminalReminder(session);
+  });
+
+  reminders.sort((a, b) => a.readyAt - b.readyAt);
+
+  return {
+    reminders,
+    monitoring: getTerminalReminderState()
+  };
+}
+
+function acknowledgePendingTerminalReminder({ reminderId, terminalId } = {}) {
+  let consumed = false;
+
+  persistentSessions.forEach((session) => {
+    if (!session.pendingReminder) return;
+
+    const matchesReminderId = reminderId && session.pendingReminder.reminderId === reminderId;
+    const matchesTerminalId = !reminderId && terminalId && session.id === terminalId;
+
+    if (matchesReminderId || matchesTerminalId) {
+      clearPendingTerminalReminder(session);
+      consumed = true;
+    }
+  });
+
+  return {
+    consumed,
+    monitoring: getTerminalReminderState()
+  };
+}
+
 function emitToTerminalConnections(namespace, session, eventName, data) {
   session.connections.forEach(socketId => {
     const clientSocket = namespace.sockets.get(socketId);
@@ -102,11 +179,9 @@ function scheduleTerminalReminder(namespace, session) {
     session.reminderIdleTimer = null;
 
     if (session.reminderEnabled) {
+      session.pendingReminder = buildPendingTerminalReminder(session);
       emitToTerminalConnections(namespace, session, 'terminal-reminder-ready', {
-        terminalId: session.id,
-        cwd: session.cwd,
-        name: session.displayName,
-        quietMs: TERMINAL_REMINDER_IDLE_MS
+        ...session.pendingReminder
       });
     }
   }, TERMINAL_REMINDER_IDLE_MS);
@@ -202,7 +277,8 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
       outputBufferSize: 0,
       hasUserMessage: false,
       reminderIdleTimer: null,
-      reminderEnabled: false
+      reminderEnabled: false,
+      pendingReminder: null
     };
 
     persistentSessions.set(terminalId, session);
@@ -217,6 +293,7 @@ async function createOrResumeTerminal(socket, terminalId, options = {}) {
     ptyProcess.onData((data) => {
       appendOutputBuffer(session, data);
       session.lastOutputAt = Date.now();
+      clearPendingTerminalReminder(session);
 
       // 发送给所有连接的客户端
       emitToTerminalConnections(socket.nsp, session, 'terminal-output', { terminalId, data });
@@ -304,6 +381,7 @@ function terminalSocket(socket) {
       session.lastActivity = Date.now();
       if (data) {
         session.hasUserMessage = true;
+        clearPendingTerminalReminder(session);
       }
     }
   });
@@ -325,6 +403,9 @@ function terminalSocket(socket) {
 
     session.reminderEnabled = Boolean(enabled);
     session.displayName = resolveTerminalDisplayName(name || session.displayName, session.cwd);
+    if (!session.reminderEnabled) {
+      clearPendingTerminalReminder(session);
+    }
 
     emitToTerminalConnections(socket.nsp, session, 'terminal-reminder-updated', {
       terminalId,
@@ -505,3 +586,6 @@ function terminalSocket(socket) {
 }
 
 module.exports = terminalSocket;
+module.exports.getTerminalReminderState = getTerminalReminderState;
+module.exports.pullPendingTerminalReminders = pullPendingTerminalReminders;
+module.exports.acknowledgePendingTerminalReminder = acknowledgePendingTerminalReminder;

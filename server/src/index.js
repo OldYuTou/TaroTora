@@ -45,6 +45,24 @@ const connectedClients = new Map();
 
 app.use('/api/app', appRoutes);
 
+app.get('/api/terminals/reminders/state', authMiddleware, (req, res) => {
+  res.json(terminalSocket.getTerminalReminderState());
+});
+
+app.post('/api/terminals/reminders/pull', authMiddleware, (req, res) => {
+  res.json(terminalSocket.pullPendingTerminalReminders());
+});
+
+app.post('/api/terminals/reminders/ack', authMiddleware, (req, res) => {
+  const { reminderId, terminalId } = req.body || {};
+
+  if (!reminderId && !terminalId) {
+    return res.status(400).json({ error: 'reminderId or terminalId is required' });
+  }
+
+  res.json(terminalSocket.acknowledgePendingTerminalReminder({ reminderId, terminalId }));
+});
+
 io.use((socket, next) => {
   const authToken = socket.handshake.auth?.token;
   const headerToken = socket.handshake.headers?.authorization?.replace(/^Bearer\s+/i, '');

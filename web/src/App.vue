@@ -138,10 +138,16 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { App as CapacitorApp } from '@capacitor/app'
 import axios from 'axios'
 import { normalizeServerUrl } from './utils/serverUrl'
 import { notifyTerminalReminder } from './utils/terminalReminder'
 import { ensureControlSocket } from './utils/controlSocket'
+import {
+  stopBackgroundReminderService,
+  supportsBackgroundReminderService,
+  syncBackgroundReminderService
+} from './utils/backgroundReminderService'
 
 const router = useRouter()
 const route = useRoute()
@@ -149,6 +155,8 @@ const connected = ref(false)
 const isMobile = ref(window.innerWidth <= 768)
 const notifications = ref([])
 const appViewportHeight = ref('100vh')
+const hasEnabledTerminalReminders = ref(false)
+const isAppActive = ref(!document.hidden)
 
 const isLoginPage = computed(() => route.path === '/login')
 const isControlMobilePage = computed(() => route.path === '/control-mobile' || route.path === '/terminal')
@@ -231,6 +239,8 @@ function isActiveTab(path) {
 }
 
 let socket = null
+let reminderStateRefreshTimer = null
+let appStateListenerHandle = null
 
 // 震动反馈
 function vibrateFeedback(pattern = [50, 100, 50]) {
@@ -278,6 +288,10 @@ function getTerminalNameFromCwd(cwd) {
 }
 
 async function handleTerminalReminderReady(data) {
+  if (!isAppActive.value && supportsBackgroundReminderService()) {
+    return
+  }
+
   const terminalName = data.name || getTerminalNameFromCwd(data.cwd)
   const title = '终端提醒'
   const body = `${terminalName} 会话有新消息`
@@ -289,6 +303,11 @@ async function handleTerminalReminderReady(data) {
   })
 
   await notifyTerminalReminder({ title, body })
+  await acknowledgeTerminalReminder(data)
+}
+
+function handleTerminalReminderStateChanged() {
+  queueTerminalReminderStateRefresh()
 }
 
 function handleSocketConnect() {
@@ -298,11 +317,13 @@ function handleSocketConnect() {
   if (token) {
     socket.emit('auth', token)
   }
+  queueTerminalReminderStateRefresh()
 }
 
 function handleSocketAuth(status) {
   if (status === 'success') {
     connected.value = true
+    queueTerminalReminderStateRefresh()
   }
 }
 
@@ -317,6 +338,87 @@ function handleSocketDisconnect() {
 
 function handleSocketConnectError() {
   connected.value = false
+}
+
+async function acknowledgeTerminalReminder(data) {
+  const reminderId = data?.reminderId || ''
+  const terminalId = data?.terminalId || ''
+
+  if (!reminderId && !terminalId) {
+    return
+  }
+
+  try {
+    await axios.post('/api/terminals/reminders/ack', {
+      reminderId,
+      terminalId
+    }, {
+      timeout: 5000
+    })
+  } catch (error) {
+    console.error('确认终端提醒失败:', error)
+  } finally {
+    queueTerminalReminderStateRefresh()
+  }
+}
+
+async function refreshTerminalReminderState() {
+  const token = localStorage.getItem('auth_token')
+  const serverUrl = normalizeServerUrl(localStorage.getItem('server_url') || '')
+
+  if (!token || !serverUrl) {
+    hasEnabledTerminalReminders.value = false
+    await syncTerminalReminderBackgroundState()
+    return
+  }
+
+  try {
+    const { data } = await axios.get('/api/terminals/reminders/state', {
+      timeout: 5000
+    })
+    hasEnabledTerminalReminders.value = Boolean(data?.hasEnabledReminders)
+  } catch (error) {
+    console.error('获取终端提醒状态失败:', error)
+  } finally {
+    await syncTerminalReminderBackgroundState()
+  }
+}
+
+function queueTerminalReminderStateRefresh(delay = 0) {
+  if (reminderStateRefreshTimer) {
+    clearTimeout(reminderStateRefreshTimer)
+  }
+
+  reminderStateRefreshTimer = setTimeout(() => {
+    reminderStateRefreshTimer = null
+    refreshTerminalReminderState()
+  }, Math.max(0, delay))
+}
+
+async function syncTerminalReminderBackgroundState() {
+  const token = localStorage.getItem('auth_token')
+  const serverUrl = normalizeServerUrl(localStorage.getItem('server_url') || '')
+
+  if (!supportsBackgroundReminderService()) {
+    return
+  }
+
+  if (!token || !serverUrl) {
+    await stopBackgroundReminderService(true)
+    return
+  }
+
+  await syncBackgroundReminderService({
+    serverUrl,
+    token,
+    enabled: hasEnabledTerminalReminders.value,
+    appActive: isAppActive.value
+  })
+}
+
+function updateAppActivityState(active) {
+  isAppActive.value = Boolean(active)
+  syncTerminalReminderBackgroundState()
 }
 
 function connectSocket() {
@@ -341,6 +443,18 @@ function connectSocket() {
   socket.off('terminal-reminder-ready', handleTerminalReminderReady)
   socket.on('terminal-reminder-ready', handleTerminalReminderReady)
 
+  socket.off('terminal-reminder-updated', handleTerminalReminderStateChanged)
+  socket.on('terminal-reminder-updated', handleTerminalReminderStateChanged)
+
+  socket.off('terminal-created', handleTerminalReminderStateChanged)
+  socket.on('terminal-created', handleTerminalReminderStateChanged)
+
+  socket.off('terminal-closed', handleTerminalReminderStateChanged)
+  socket.on('terminal-closed', handleTerminalReminderStateChanged)
+
+  socket.off('terminal-exit', handleTerminalReminderStateChanged)
+  socket.on('terminal-exit', handleTerminalReminderStateChanged)
+
   socket.off('disconnect', handleSocketDisconnect)
   socket.on('disconnect', handleSocketDisconnect)
 
@@ -360,6 +474,7 @@ function checkAuth() {
   let serverUrl = normalizeServerUrl(localStorage.getItem('server_url') || '')
 
   if (!token || !serverUrl) {
+    stopBackgroundReminderService(true)
     if (route.path !== '/login') {
       router.push('/login')
     }
@@ -382,6 +497,7 @@ function checkAuth() {
 }
 
 function logout() {
+  stopBackgroundReminderService(true)
   localStorage.removeItem('auth_token')
   localStorage.removeItem('server_url')
   router.push('/login')
@@ -392,12 +508,28 @@ function handleResize() {
   updateAppViewportHeight()
 }
 
+function handleVisibilityChange() {
+  updateAppActivityState(!document.hidden)
+}
+
 onMounted(() => {
   checkAuth()
   handleResize()
+  queueTerminalReminderStateRefresh()
   window.addEventListener('resize', handleResize)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
   window.visualViewport?.addEventListener('resize', updateAppViewportHeight)
   window.visualViewport?.addEventListener('scroll', updateAppViewportHeight)
+
+  if (supportsBackgroundReminderService()) {
+    CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+      updateAppActivityState(isActive)
+    }).then(handle => {
+      appStateListenerHandle = handle
+    }).catch(error => {
+      console.error('监听应用前后台状态失败:', error)
+    })
+  }
 
   router.beforeEach((to, from, next) => {
     if (to.path === '/login') {
@@ -414,9 +546,16 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (reminderStateRefreshTimer) {
+    clearTimeout(reminderStateRefreshTimer)
+    reminderStateRefreshTimer = null
+  }
   window.removeEventListener('resize', handleResize)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
   window.visualViewport?.removeEventListener('resize', updateAppViewportHeight)
   window.visualViewport?.removeEventListener('scroll', updateAppViewportHeight)
+  appStateListenerHandle?.remove?.()
+  appStateListenerHandle = null
 })
 </script>
 

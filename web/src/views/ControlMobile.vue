@@ -1055,6 +1055,64 @@ function handleSocketTerminalReminderUpdated(data) {
   }
 }
 
+function handleSocketTerminalOutput(data) {
+  addDebug('收到输出: ' + data.terminalId.substring(0, 8) + '...')
+  enqueueTerminalOutput(data.terminalId, data.data)
+}
+
+function handleSocketTerminalExit(data) {
+  addDebug('终端退出: ' + data.terminalId.substring(0, 8), 'warning')
+  const index = terminals.value.findIndex(t => t.id === data.terminalId)
+  if (index !== -1) {
+    closeTerminal(index, { confirmClose: false })
+  }
+}
+
+function handleSocketTerminalCreated(data) {
+  addDebug('终端创建成功: ' + data.terminalId.substring(0, 8) + ' PID:' + data.pid + (data.resumed ? ' [恢复]' : ''), 'success')
+  const terminal = terminals.value.find(t => t.id === data.terminalId)
+  if (terminal) {
+    terminal.reminderEnabled = Boolean(data.reminderEnabled)
+    terminal.hasUserMessage = Boolean(data.hasUserMessage)
+    if (data.name) {
+      terminal.name = data.name
+    }
+  }
+  const termInstance = termInstances.find(t => t.id === data.terminalId)
+  if (termInstance) {
+    termInstance.xterm.writeln('')
+    if (data.resumed) {
+      termInstance.xterm.writeln('\x1b[33m✓ 已恢复之前的终端会话 (PID: ' + data.pid + ')\x1b[0m')
+    } else {
+      termInstance.xterm.writeln('\x1b[32m✓ 终端已连接 (PID: ' + data.pid + ')\x1b[0m')
+    }
+    termInstance.xterm.writeln('')
+    emitTerminalResize(termInstance)
+  }
+}
+
+function handleSocketTerminalError(data) {
+  addDebug('终端错误: ' + JSON.stringify(data), 'error')
+}
+
+async function handleSocketTerminalList(serverTerminals) {
+  addDebug(`收到终端列表: ${serverTerminals.length} 个终端`, 'success')
+
+  terminals.value = []
+  termInstances = []
+  terminalRefs.value = []
+
+  if (serverTerminals.length === 0) {
+    addDebug('服务器上没有活跃终端')
+    return
+  }
+
+  for (const serverTerm of serverTerminals) {
+    addDebug(`恢复终端: ${serverTerm.id.substring(0, 8)} 路径: ${serverTerm.cwd}`)
+    await createTerminal(serverTerm.cwd, serverTerm.name, serverTerm.id, serverTerm)
+  }
+}
+
 function handleSocketConnect() {
   addDebug('Socket 已连接', 'success')
 }
@@ -1106,11 +1164,8 @@ function initSocket() {
     }
 
     // 绑定终端相关事件
-    socket.off('terminal-output') // 先移除旧的监听器
-    socket.on('terminal-output', (data) => {
-      addDebug('收到输出: ' + data.terminalId.substring(0, 8) + '...')
-      enqueueTerminalOutput(data.terminalId, data.data)
-    })
+    socket.off('terminal-output', handleSocketTerminalOutput)
+    socket.on('terminal-output', handleSocketTerminalOutput)
 
     socket.off('terminal-reminder-ready', handleSocketTerminalReminderReady)
     socket.on('terminal-reminder-ready', handleSocketTerminalReminderReady)
@@ -1118,44 +1173,14 @@ function initSocket() {
     socket.off('terminal-reminder-updated', handleSocketTerminalReminderUpdated)
     socket.on('terminal-reminder-updated', handleSocketTerminalReminderUpdated)
 
-    socket.off('terminal-exit')
-    socket.on('terminal-exit', (data) => {
-      addDebug('终端退出: ' + data.terminalId.substring(0, 8), 'warning')
-      const index = terminals.value.findIndex(t => t.id === data.terminalId)
-      if (index !== -1) {
-        closeTerminal(index, { confirmClose: false })
-      }
-    })
+    socket.off('terminal-exit', handleSocketTerminalExit)
+    socket.on('terminal-exit', handleSocketTerminalExit)
 
-    socket.off('terminal-created')
-    socket.on('terminal-created', (data) => {
-      addDebug('终端创建成功: ' + data.terminalId.substring(0, 8) + ' PID:' + data.pid + (data.resumed ? ' [恢复]' : ''), 'success')
-      const terminal = terminals.value.find(t => t.id === data.terminalId)
-      if (terminal) {
-        terminal.reminderEnabled = Boolean(data.reminderEnabled)
-        terminal.hasUserMessage = Boolean(data.hasUserMessage)
-        if (data.name) {
-          terminal.name = data.name
-        }
-      }
-      // 找到对应的终端并显示连接成功
-      const termInstance = termInstances.find(t => t.id === data.terminalId)
-      if (termInstance) {
-        termInstance.xterm.writeln('')
-        if (data.resumed) {
-          termInstance.xterm.writeln('\x1b[33m✓ 已恢复之前的终端会话 (PID: ' + data.pid + ')\x1b[0m')
-        } else {
-          termInstance.xterm.writeln('\x1b[32m✓ 终端已连接 (PID: ' + data.pid + ')\x1b[0m')
-        }
-        termInstance.xterm.writeln('')
-        emitTerminalResize(termInstance)
-      }
-    })
+    socket.off('terminal-created', handleSocketTerminalCreated)
+    socket.on('terminal-created', handleSocketTerminalCreated)
 
-    socket.off('terminal-error')
-    socket.on('terminal-error', (data) => {
-      addDebug('终端错误: ' + JSON.stringify(data), 'error')
-    })
+    socket.off('terminal-error', handleSocketTerminalError)
+    socket.on('terminal-error', handleSocketTerminalError)
   }
 }
 
@@ -1498,31 +1523,9 @@ async function loadExistingTerminals() {
 
 // 请求终端列表
 function requestTerminalList() {
-  // 先移除旧的监听器避免重复
-  socket.off('terminal-list')
+  socket.off('terminal-list', handleSocketTerminalList)
+  socket.on('terminal-list', handleSocketTerminalList)
 
-  // 监听终端列表响应
-  socket.on('terminal-list', async (serverTerminals) => {
-    addDebug(`收到终端列表: ${serverTerminals.length} 个终端`, 'success')
-
-    // 清空本地列表（因为 xterm 实例已经被销毁）
-    terminals.value = []
-    termInstances = []
-    terminalRefs.value = []
-
-    if (serverTerminals.length === 0) {
-      addDebug('服务器上没有活跃终端')
-      return
-    }
-
-    // 为每个已存在的终端创建本地界面并连接
-    for (const serverTerm of serverTerminals) {
-      addDebug(`恢复终端: ${serverTerm.id.substring(0, 8)} 路径: ${serverTerm.cwd}`)
-      await createTerminal(serverTerm.cwd, serverTerm.name, serverTerm.id, serverTerm)
-    }
-  })
-
-  // 发送请求
   socket.emit('terminal-list')
 }
 

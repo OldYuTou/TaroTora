@@ -1107,5 +1107,29 @@
       "server: 终端提醒最小化 socket 自测通过，Write-Output 后约 5 秒收到 terminal-reminder-ready 事件",
       "server: 已重启 3000 端口服务并确认 /health 返回 status=ok"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "支持 Android 端终端提醒在后台继续接收通知",
+    "changes": [
+      "服务端为终端提醒新增待消费状态和提醒序号，terminal-reminder-ready 触发后不再只依赖瞬时 socket 事件，同时提供 /api/terminals/reminders/state、/pull 和 /ack 接口",
+      "新增 Android 原生前台服务 TerminalReminderBackgroundService，在应用退到后台且存在已开启提醒的终端时轮询服务端待提醒列表并发送系统通知",
+      "新增 Capacitor 插件 TerminalReminderBackground，前端可根据应用前后台状态启动或停止原生后台提醒服务",
+      "App.vue 新增终端提醒状态同步、前台提醒确认 ack 和原生后台服务联动逻辑；移动端控制页修复 socket.off 无参解绑会误删其他监听器的问题",
+      "将 Web 与 Android 本地版本提升到 1.4.36 / 1987689，重建前端资源并同步到 server/public"
+    ],
+    "verification": [
+      "server: node --check src/index.js 通过",
+      "server: node --check src/routes/terminal.js 通过",
+      "web: npm run build 通过，产物为 index-c44ac7ab.js、index-f68f17eb.css、web-f5183397.js",
+      "web: npm run cap:sync 通过，Android 侧同步了 @capacitor/app、@capacitor/local-notifications、@capacitor/splash-screen",
+      "android: .\\gradlew.bat assembleDebug --console=plain 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过，生成 app-release-unsigned.apk",
+      "server: 重启 3000 端口服务后，本地 http://127.0.0.1:3000/health 返回 status=ok，新的监听进程 PID 为 58312",
+      "公网: https://REDACTED_DOMAIN/health 返回 status=ok，Socket.IO 通过 https://REDACTED_DOMAIN websocket 握手成功",
+      "提醒联调: 本机 socket 创建测试终端后，前台 ack 路径确认 afterAckPullCount=0；后台 pull 路径确认 firstPullCount=1 且 secondPullCount=0",
+      "APK: aapt 确认 debug 包 versionCode=1987689、versionName=1.4.36，且已包含 android.permission.FOREGROUND_SERVICE、android.permission.FOREGROUND_SERVICE_DATA_SYNC、android.permission.POST_NOTIFICATIONS",
+      "ADB: 当前设备 f68a31ec 在线，已确认手机当前安装的是正式签名 1.4.35；本轮新 APK 尚未重新正式签名，因此未执行覆盖安装"
+    ]
   }
 ]
