@@ -9,8 +9,8 @@ android {
         applicationId "com.tarotora.remotecontrol"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1987698
-        versionName "1.4.45"
+        versionCode 1987699
+        versionName "1.4.46"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

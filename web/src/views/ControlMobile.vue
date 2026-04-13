@@ -87,14 +87,13 @@
               @keyup="handleMobileKeyup($event, index)"
               @blur="handleMobileInputBlur(index)"
             ></textarea>
-            <!-- 透明覆盖层：默认浏览，双击唤起键盘，长按显示复制/粘贴菜单 -->
+            <!-- 透明覆盖层：默认浏览，仅处理滚动、选择和长按菜单 -->
             <div
               class="terminal-overlay"
               @touchstart="handleTerminalTouchStart($event, index)"
               @touchmove.prevent="handleTerminalTouchMove"
               @touchend="handleTerminalTouchEnd"
               @touchcancel="clearTerminalTouch"
-              @dblclick.prevent="focusTerminalInput(index)"
               @contextmenu.prevent="handleTerminalContextMenu($event, index)"
               @mousedown.prevent
             ></div>
@@ -126,7 +125,7 @@
           </svg>
           <span>新建终端</span>
         </button>
-        <button class="tool-btn mode-toggle" :class="{ active: inputMode }" @click="focusTerminalInput(activeTerminalIndex)">
+        <button class="tool-btn mode-toggle" :class="{ active: inputMode }" @click="toggleTerminalInputMode(activeTerminalIndex)">
           <svg v-if="inputMode" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
             <line x1="6" y1="8" x2="6" y2="8"></line>
@@ -249,7 +248,6 @@ const terminalContextMenu = ref({
   canCopy: false
 })
 
-const DOUBLE_TAP_DELAY = 320
 const TAP_MOVE_LIMIT = 18
 const GESTURE_THRESHOLD = 4
 const LONG_PRESS_DELAY = 550
@@ -269,7 +267,6 @@ const controlMobileStyle = computed(() => ({
 
 let terminalTouchState = null
 let longPressTimer = null
-let lastTerminalTap = null
 let keyboardCloseSyncTimer = null
 let terminalResizeObserver = null
 let nativeKeyboardListenerHandle = null
@@ -655,6 +652,15 @@ function focusTerminalInput(index = activeTerminalIndex.value) {
   })
 }
 
+function toggleTerminalInputMode(index = activeTerminalIndex.value) {
+  if (inputMode.value) {
+    exitMobileInputMode(index, true)
+    return
+  }
+
+  focusTerminalInput(index)
+}
+
 function handleMobileInputBlur(index = activeTerminalIndex.value) {
   exitMobileInputMode(index)
 }
@@ -702,7 +708,7 @@ async function setupNativeKeyboardListener() {
   }
 }
 
-// 保持覆盖层常驻：浏览、滚动和选择都经过覆盖层手势处理，输入通过双击或键盘按钮触发。
+// 保持覆盖层常驻：浏览、滚动和选择都经过覆盖层手势处理，输入只通过键盘按钮触发。
 function updateOverlayState(index) {
   const container = terminalRefs.value[index]
   const panel = container?.closest('.terminal-panel')
@@ -781,12 +787,6 @@ function handleTerminalTouchStart(event, index) {
   hideTerminalContextMenu()
 
   const touch = event.touches[0]
-  const now = Date.now()
-  const tapPoint = { x: touch.clientX, y: touch.clientY }
-  const isDoubleTap = lastTerminalTap &&
-    lastTerminalTap.index === index &&
-    now - lastTerminalTap.time <= DOUBLE_TAP_DELAY &&
-    getDistance(tapPoint, lastTerminalTap) <= TAP_MOVE_LIMIT
 
   terminalTouchState = {
     index,
@@ -803,18 +803,10 @@ function handleTerminalTouchStart(event, index) {
       screenY: touch.screenY
     },
     scrollRemainder: 0,
-    gesture: isDoubleTap ? 'input' : null,
+    gesture: null,
     selectionStarted: false,
     longPressTriggered: false,
     selectionMoved: false
-  }
-
-  if (isDoubleTap) {
-    clearLongPressTimer()
-    focusTerminalInput(index)
-    lastTerminalTap = null
-    event.preventDefault()
-    return
   }
 
   clearLongPressTimer()
@@ -875,10 +867,7 @@ function handleTerminalTouchEnd(event) {
   if (!terminalTouchState) return
 
   const state = terminalTouchState
-  if (state.gesture === 'input') {
-    focusTerminalInput(state.index)
-    event.preventDefault()
-  } else if (state.gesture === 'select' && state.selectionStarted) {
+  if (state.gesture === 'select' && state.selectionStarted) {
     if (state.longPressTriggered && !state.selectionMoved) {
       forwardMouseToTerminal('mouseup', state.lastPoint, state.index, 0)
       selectTerminalWordAt(state.index, state.startPoint)
@@ -889,13 +878,6 @@ function handleTerminalTouchEnd(event) {
       showTerminalContextMenu(state.index, state.lastPoint.clientX, state.lastPoint.clientY)
     }, 80)
     event.preventDefault()
-  } else if (!state.gesture && !state.longPressTriggered) {
-    lastTerminalTap = {
-      index: state.index,
-      time: Date.now(),
-      x: state.startPoint.clientX,
-      y: state.startPoint.clientY
-    }
   }
 
   terminalTouchState = null

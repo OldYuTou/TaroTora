@@ -1398,5 +1398,25 @@
       "服务端: http://127.0.0.1:3000/api/app/version 返回 version=1.4.45、versionCode=1987698、fileExists=true",
       "ADB: 当前 adb devices -l 未发现已连接设备，本轮未完成真机安装"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "将移动端终端输入改为仅键盘按钮显式切换并发布 1.4.46",
+    "changes": [
+      "移除移动端终端覆盖层的双击唤起键盘入口，并清理触摸手势里的双击输入分支，避免用户在非键盘按钮操作下意外唤起软键盘",
+      "将底部键盘按钮改为真正的显式开关，开启时进入输入模式并唤起键盘，再次点击则退出输入模式并收起键盘",
+      "将 Web 与 Android 版本提升到 1.4.46 / 1987699，重新构建前端资源、同步 server/public，并生成正式签名 APK 安装到手机"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-db1d7c22.js、index-daa6b45d.css、web-eb039cce.js、web-ea47cdea.js",
+      "web: npm run cap:sync 通过",
+      "server: node --check src/index.js 通过",
+      "server: node --check src/routes/terminal.js 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: aapt dump badging 与 apksigner verify --print-certs 确认 versionCode=1987699、versionName=1.4.46，证书 SHA-256 保持 REDACTED_RELEASE_FINGERPRINT",
+      "服务端: http://127.0.0.1:3000/api/app/version 返回 version=1.4.46、versionCode=1987699、fileExists=true",
+      "ADB: adb install -r REDACTED_PATHTaroTora-release-v1.4.46.apk 返回 Success",
+      "ADB: adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987699、versionName=1.4.46"
+    ]
   }
 ]
