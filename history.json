@@ -1284,5 +1284,28 @@
       "ADB: adb install -r REDACTED_PATHTaroTora-release-v1.4.40.apk 返回 Success",
       "ADB: adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987693、versionName=1.4.40"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "修复 Android 后台提醒拿不到登录配置导致后台不提醒的问题",
+    "changes": [
+      "MainActivity 在切到后台时改为直接从 WebView localStorage 读取 server_url 和 auth_token，并同步写入原生后台提醒服务",
+      "原生层在拿到登录配置后立即持久化 monitoringEnabled=true 和 appActive=false，确保后台前台服务具备启动条件",
+      "前台恢复时显式停止后台监听，避免前台期间后台服务继续占用轮询链路",
+      "将 Web 与 Android 版本提升到 1.4.41 / 1987694，重新构建并签名正式 APK，同步 server/public 与 server/apk 版本元数据"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-245c2332.js、index-2e9dd592.css、web-90f5767d.js、web-e784a468.js",
+      "web: npm run cap:sync 通过",
+      "server: node --check src/index.js 通过",
+      "server: node --check src/routes/terminal.js 通过",
+      "android: .\\gradlew.bat assembleDebug --console=plain 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: zipalign + apksigner 正式签名生成 TaroTora-release-v1.4.41.apk，并同步到 TaroTora.apk 与 server/apk/TaroTora.apk",
+      "APK: aapt dump badging 与 adb shell dumpsys package 均确认 versionCode=1987694、versionName=1.4.41",
+      "ADB: 拉起应用后切到后台，logcat 确认 syncStoredAuthConfigAndStartMonitoring 读到 serverUrlPresent=true、tokenPresent=true，并成功 startForegroundService",
+      "ADB: logcat 确认后台服务实际请求 https://REDACTED_DOMAIN/api/terminals/reminders/pull，解析到 reminders=2 并执行 showReminderNotification",
+      "ADB: dumpsys notification 确认 terminal-reminder-monitor 前台服务通知与 terminal-reminders 业务通知已进入系统通知栈"
+    ]
   }
 ]

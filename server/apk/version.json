@@ -1,8 +1,8 @@
 {
-  "versionCode": 1987693,
+  "versionCode": 1987694,
   "forceUpdate": false,
-  "version": "1.4.40",
+  "version": "1.4.41",
   "filename": "TaroTora.apk",
-  "changelog": "增加后台提醒调试日志并排查服务启动链路",
-  "updatedAt": "2026-04-13T17:42:53.048+08:00"
+  "changelog": "修复后台提醒原生层丢失登录配置的问题",
+  "updatedAt": "2026-04-13T18:20:00.000+08:00"
 }
