@@ -1,8 +1,8 @@
 {
-  "version": "1.4.38",
-  "versionCode": 1987691,
+  "version": "1.4.39",
+  "versionCode": 1987692,
   "filename": "TaroTora.apk",
-  "changelog": "修复切到后台后终端提醒服务未稳定启动的问题",
+  "changelog": "修复终端提醒跨页面与后台收不到的问题",
   "forceUpdate": false,
-  "updatedAt": "2026-04-13T16:20:00.000+08:00"
+  "updatedAt": "2026-04-13T18:20:00.000+08:00"
 }

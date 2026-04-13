@@ -164,6 +164,14 @@ function emitToTerminalConnections(namespace, session, eventName, data) {
   });
 }
 
+function emitToAuthenticatedClients(namespace, eventName, data) {
+  namespace.sockets.forEach((clientSocket) => {
+    if (clientSocket?.data?.isAuthenticated === true) {
+      clientSocket.emit(eventName, data);
+    }
+  });
+}
+
 function scheduleTerminalReminder(namespace, session) {
   if (!session.hasUserMessage) return;
 
@@ -180,7 +188,7 @@ function scheduleTerminalReminder(namespace, session) {
 
     if (session.reminderEnabled) {
       session.pendingReminder = buildPendingTerminalReminder(session);
-      emitToTerminalConnections(namespace, session, 'terminal-reminder-ready', {
+      emitToAuthenticatedClients(namespace, 'terminal-reminder-ready', {
         ...session.pendingReminder
       });
     }
@@ -407,7 +415,7 @@ function terminalSocket(socket) {
       clearPendingTerminalReminder(session);
     }
 
-    emitToTerminalConnections(socket.nsp, session, 'terminal-reminder-updated', {
+    emitToAuthenticatedClients(socket.nsp, 'terminal-reminder-updated', {
       terminalId,
       reminderEnabled: session.reminderEnabled,
       hasUserMessage: session.hasUserMessage,

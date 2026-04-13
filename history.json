@@ -1219,5 +1219,32 @@
       "bdpan upload REDACTED_PATHTaroTora-release-v1.4.38.apk TaroTora/TaroTora-release-v1.4.38.apk 返回上传成功",
       "bdpan ls TaroTora/TaroTora-release-v1.4.38.apk 确认远端存在 TaroTora-release-v1.4.38.apk，修改时间为 2026-04-13 14:53:21"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "修复终端提醒跨页面与后台收不到的问题",
+    "changes": [
+      "服务端终端提醒事件不再只发给当前终端连接的 socket，改为发给所有已认证客户端，解决切换到文件页、设置页后全局 App 仍然收不到提醒的问题",
+      "App.vue 在收到 reminderEnabled=true 的状态广播时立即同步 Android 后台提醒服务，减少开启提醒后立刻切后台的竞态窗口",
+      "Android 原生后台提醒服务新增 monitoringEnabled 与 appActive 持久化状态，前台开启提醒时就启动前台服务，后台时才实际轮询服务端，避免依赖切后台瞬间再启动前台服务而触发 Android 12+ 的后台启动限制",
+      "MainActivity 改为只更新 appActive 状态而不篡改提醒开关，后台时按已保存配置拉起服务，前台时保持服务存活但暂停轮询",
+      "显式声明 POST_NOTIFICATIONS 权限，并将 Web / Android 版本提升到 1.4.39 / 1987692，重建前端资源、同步到 server/public，并生成正式签名 APK 覆盖 server/apk/TaroTora.apk"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-4aae164d.js、index-63dfbb5d.css、web-d7432bbe.js",
+      "web: npm run cap:sync 通过",
+      "server: node --check src/index.js 通过",
+      "server: node --check src/routes/terminal.js 通过",
+      "server: 按 AMT 模型重启 3000 端口服务后，本地 /health 返回 status=ok，新的监听进程 PID 为 57816",
+      "server: 双 socket 本地自测通过，一个 socket 创建终端并开启提醒，另一个未连接终端页面的 socket 也成功收到 terminal-reminder-ready 广播",
+      "android: .\\gradlew.bat assembleDebug --console=plain 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: zipalign + apksigner 正式签名生成 TaroTora-release-v1.4.39.apk，并同步到 TaroTora.apk 与 server/apk/TaroTora.apk",
+      "APK: aapt dump badging 确认 versionCode=1987692、versionName=1.4.39",
+      "APK: apksigner verify --print-certs 确认证书 SHA-256 为 REDACTED_RELEASE_FINGERPRINT",
+      "APK: jar tf 确认包含 assets/public/assets/index-4aae164d.js、assets/public/assets/index-63dfbb5d.css、assets/public/assets/web-d7432bbe.js",
+      "服务端: 本地与公网 /api/app/version 均已返回 version=1.4.39、versionCode=1987692、fileExists=true",
+      "ADB: adb devices -l 为空，本轮未执行真机安装与后台通知实机验证"
+    ]
   }
 ]

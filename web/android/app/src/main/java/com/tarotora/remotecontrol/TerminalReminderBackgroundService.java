@@ -40,6 +40,8 @@ public class TerminalReminderBackgroundService extends Service {
     private static final String PREFS_NAME = "terminal_reminder_background";
     private static final String KEY_SERVER_URL = "server_url";
     private static final String KEY_AUTH_TOKEN = "auth_token";
+    private static final String KEY_MONITORING_ENABLED = "monitoring_enabled";
+    private static final String KEY_APP_ACTIVE = "app_active";
 
     private static final String ACTION_START = "com.tarotora.remotecontrol.action.START_TERMINAL_REMINDER";
     private static final String ACTION_STOP = "com.tarotora.remotecontrol.action.STOP_TERMINAL_REMINDER";
@@ -60,6 +62,8 @@ public class TerminalReminderBackgroundService extends Service {
     private volatile boolean pollInFlight = false;
     private String serverUrl = "";
     private String authToken = "";
+    private boolean monitoringEnabled = false;
+    private boolean appActive = true;
 
     public static void storeConfig(Context context, String serverUrl, String authToken) {
         SharedPreferences preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -69,23 +73,44 @@ public class TerminalReminderBackgroundService extends Service {
             .apply();
     }
 
+    public static void storeMonitoringState(Context context, boolean enabled, boolean appActive) {
+        SharedPreferences preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        preferences.edit()
+            .putBoolean(KEY_MONITORING_ENABLED, enabled)
+            .putBoolean(KEY_APP_ACTIVE, appActive)
+            .apply();
+    }
+
+    public static void updateAppActiveState(Context context, boolean appActive) {
+        SharedPreferences preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        boolean enabled = preferences.getBoolean(KEY_MONITORING_ENABLED, false);
+        storeMonitoringState(context, enabled, appActive);
+    }
+
     public static void clearConfig(Context context) {
         SharedPreferences preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         preferences.edit()
             .remove(KEY_SERVER_URL)
             .remove(KEY_AUTH_TOKEN)
+            .remove(KEY_MONITORING_ENABLED)
+            .remove(KEY_APP_ACTIVE)
             .apply();
     }
 
     public static void startMonitoring(Context context, String serverUrl, String authToken) {
         storeConfig(context, serverUrl, authToken);
+        storeMonitoringState(context, true, false);
 
         Intent intent = new Intent(context, TerminalReminderBackgroundService.class);
         intent.setAction(ACTION_START);
         intent.putExtra(EXTRA_SERVER_URL, safeTrim(serverUrl));
         intent.putExtra(EXTRA_AUTH_TOKEN, safeTrim(authToken));
 
-        ContextCompat.startForegroundService(context, intent);
+        try {
+            ContextCompat.startForegroundService(context, intent);
+        } catch (RuntimeException exception) {
+            Log.e(TAG, "启动后台提醒前台服务失败", exception);
+        }
     }
 
     public static boolean hasStoredConfig(Context context) {
@@ -103,8 +128,13 @@ public class TerminalReminderBackgroundService extends Service {
 
         Intent intent = new Intent(context, TerminalReminderBackgroundService.class);
         intent.setAction(ACTION_START);
-        ContextCompat.startForegroundService(context, intent);
-        return true;
+        try {
+            ContextCompat.startForegroundService(context, intent);
+            return true;
+        } catch (RuntimeException exception) {
+            Log.e(TAG, "按已保存配置启动后台提醒前台服务失败", exception);
+            return false;
+        }
     }
 
     public static void stopMonitoring(Context context, boolean clearConfig) {
@@ -144,6 +174,14 @@ public class TerminalReminderBackgroundService extends Service {
             authToken = safeTrim(preferences.getString(KEY_AUTH_TOKEN, ""));
         }
 
+        refreshMonitoringState();
+
+        if (!monitoringEnabled) {
+            Log.i(TAG, "后台提醒未启用，停止监听");
+            stopSelfSafely();
+            return START_NOT_STICKY;
+        }
+
         if (TextUtils.isEmpty(serverUrl) || TextUtils.isEmpty(authToken)) {
             Log.w(TAG, "缺少服务端地址或认证令牌，停止后台提醒监听");
             stopSelfSafely();
@@ -178,6 +216,19 @@ public class TerminalReminderBackgroundService extends Service {
             return;
         }
 
+        refreshMonitoringState();
+
+        if (!monitoringEnabled) {
+            Log.i(TAG, "后台提醒已禁用，停止后台监听");
+            stopSelfSafely();
+            return;
+        }
+
+        if (appActive) {
+            scheduleNextPoll(POLL_INTERVAL_MS);
+            return;
+        }
+
         pollInFlight = true;
         executor.execute(() -> {
             try {
@@ -186,6 +237,7 @@ public class TerminalReminderBackgroundService extends Service {
 
                 if (!result.hasEnabledReminders) {
                     Log.i(TAG, "服务端无启用中的终端提醒，停止后台监听");
+                    storeMonitoringState(this, false, appActive);
                     handler.post(this::stopSelfSafely);
                     return;
                 }
@@ -202,6 +254,12 @@ public class TerminalReminderBackgroundService extends Service {
 
             scheduleNextPoll(POLL_INTERVAL_MS);
         });
+    }
+
+    private void refreshMonitoringState() {
+        SharedPreferences preferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        monitoringEnabled = preferences.getBoolean(KEY_MONITORING_ENABLED, false);
+        appActive = preferences.getBoolean(KEY_APP_ACTIVE, true);
     }
 
     private PollResult pullPendingReminders() throws Exception {

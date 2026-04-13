@@ -21,9 +21,10 @@ public class TerminalReminderBackgroundPlugin extends Plugin {
         if (!TextUtils.isEmpty(serverUrl) && !TextUtils.isEmpty(token)) {
             TerminalReminderBackgroundService.storeConfig(getContext(), serverUrl, token);
         }
+        TerminalReminderBackgroundService.storeMonitoringState(getContext(), enabled, appActive);
 
-        if (enabled && !appActive && !TextUtils.isEmpty(serverUrl) && !TextUtils.isEmpty(token)) {
-            TerminalReminderBackgroundService.startMonitoring(getContext(), serverUrl, token);
+        if (enabled && !TextUtils.isEmpty(serverUrl) && !TextUtils.isEmpty(token)) {
+            TerminalReminderBackgroundService.startMonitoringIfConfigured(getContext());
         } else {
             TerminalReminderBackgroundService.stopMonitoring(getContext(), false);
         }
@@ -31,7 +32,7 @@ public class TerminalReminderBackgroundPlugin extends Plugin {
         JSObject result = new JSObject();
         result.put("enabled", enabled);
         result.put("appActive", appActive);
-        result.put("serviceRunning", enabled && !appActive && !TextUtils.isEmpty(serverUrl) && !TextUtils.isEmpty(token));
+        result.put("serviceRunning", enabled && !TextUtils.isEmpty(serverUrl) && !TextUtils.isEmpty(token));
         call.resolve(result);
     }
 

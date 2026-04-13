@@ -19,6 +19,7 @@ public class MainActivity extends BridgeActivity {
         super.onStop();
 
         if (!isChangingConfigurations()) {
+            TerminalReminderBackgroundService.updateAppActiveState(this, false);
             TerminalReminderBackgroundService.startMonitoringIfConfigured(this);
         }
     }
@@ -26,6 +27,6 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
-        TerminalReminderBackgroundService.stopMonitoring(this, false);
+        TerminalReminderBackgroundService.updateAppActiveState(this, true);
     }
 }

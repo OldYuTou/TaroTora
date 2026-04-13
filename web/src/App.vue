@@ -309,6 +309,7 @@ async function handleTerminalReminderReady(data) {
 function handleTerminalReminderStateChanged(data) {
   if (data?.reminderEnabled === true) {
     hasEnabledTerminalReminders.value = true
+    void syncTerminalReminderBackgroundState()
   }
   queueTerminalReminderStateRefresh()
 }
