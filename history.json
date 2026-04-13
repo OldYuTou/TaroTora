@@ -1379,5 +1379,24 @@
       "ADB: adb install -r REDACTED_PATHTaroTora-release-v1.4.44.apk 返回 Success",
       "ADB: adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987697、versionName=1.4.44"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "新增原生键盘状态插件并发布 1.4.45",
+    "changes": [
+      "Android 端新增 KeyboardStatePlugin，通过原生全局布局变化直接向 Web 层广播键盘显示与隐藏事件，专门覆盖输入法主动收起键盘但 WebView 不触发 blur 的场景",
+      "MainActivity 注册 KeyboardStatePlugin，移动端控制页接入原生 keyboardStateChange 事件，在键盘隐藏时主动回收终端输入模式，在键盘显示时同步终端可视区域",
+      "将 Web 与 Android 版本提升到 1.4.45 / 1987698，重新构建前端资源、同步 server/public，并生成正式签名 APK 覆盖 TaroTora.apk 与 server/apk/TaroTora.apk"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-e00f7915.js、index-8284681f.css、web-17649344.js、web-c3345879.js",
+      "web: npm run cap:sync 通过",
+      "server: node --check src/index.js 通过",
+      "server: node --check src/routes/terminal.js 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: aapt dump badging 与 apksigner verify --print-certs 确认 versionCode=1987698、versionName=1.4.45，证书 SHA-256 保持 REDACTED_RELEASE_FINGERPRINT",
+      "服务端: http://127.0.0.1:3000/api/app/version 返回 version=1.4.45、versionCode=1987698、fileExists=true",
+      "ADB: 当前 adb devices -l 未发现已连接设备，本轮未完成真机安装"
+    ]
   }
 ]

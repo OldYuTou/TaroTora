@@ -30,7 +30,7 @@
           </div>
           <h1>TaroTora</h1>
           <p class="subtitle">Remote Control System</p>
-          <span class="version-badge">v1.4.44</span>
+          <span class="version-badge">v1.4.45</span>
         </div>
 
         <form class="login-form" @submit.prevent="handleLogin">

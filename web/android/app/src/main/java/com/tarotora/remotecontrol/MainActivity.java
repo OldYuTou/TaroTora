@@ -28,6 +28,7 @@ public class MainActivity extends BridgeActivity {
         // Register custom plugins
         registerPlugin(SharePlugin.class);
         registerPlugin(InstallerPlugin.class);
+        registerPlugin(KeyboardStatePlugin.class);
         registerPlugin(TerminalReminderBackgroundPlugin.class);
     }
 

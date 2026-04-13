@@ -223,6 +223,7 @@
 </template>
 
 <script setup>
+import { Capacitor, registerPlugin } from '@capacitor/core'
 import { computed, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
@@ -230,6 +231,8 @@ import 'xterm/css/xterm.css'
 import { getDefaultServerUrl, normalizeServerUrl } from '../utils/serverUrl'
 import { ensureTerminalReminderPermission } from '../utils/terminalReminder'
 import { ensureControlSocket } from '../utils/controlSocket'
+
+const KeyboardState = registerPlugin('KeyboardState')
 
 // 终端列表
 const terminals = ref([])
@@ -269,6 +272,7 @@ let longPressTimer = null
 let lastTerminalTap = null
 let keyboardCloseSyncTimer = null
 let terminalResizeObserver = null
+let nativeKeyboardListenerHandle = null
 const terminalOutputQueues = new Map()
 
 // 调试信息
@@ -628,6 +632,10 @@ function getDistance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y)
 }
 
+function hasFocusedTerminalInput() {
+  return inputRefs.value.some(input => input && document.activeElement === input)
+}
+
 function focusTerminalInput(index = activeTerminalIndex.value) {
   hideTerminalContextMenu()
   clearKeyboardCloseSync()
@@ -649,6 +657,49 @@ function focusTerminalInput(index = activeTerminalIndex.value) {
 
 function handleMobileInputBlur(index = activeTerminalIndex.value) {
   exitMobileInputMode(index)
+}
+
+function syncKeyboardStateFromNative(state = {}) {
+  const visible = !!state.visible
+  const height = Math.max(0, Number(state.height) || 0)
+
+  if (!inputMode.value && !hasFocusedTerminalInput()) {
+    return
+  }
+
+  if (!visible) {
+    exitMobileInputMode(activeTerminalIndex.value, true)
+    return
+  }
+
+  const layoutHeight = window.innerHeight || document.documentElement.clientHeight || 0
+  const estimatedViewportHeight = height > 0 && layoutHeight > 0
+    ? Math.max(0, layoutHeight - height)
+    : (window.visualViewport?.height || layoutHeight)
+
+  isKeyboardVisible.value = true
+  keyboardViewportHeight.value = estimatedViewportHeight
+    ? `${Math.max(220, estimatedViewportHeight - KEYBOARD_SAFE_GAP)}px`
+    : ''
+
+  nextTick(() => keepTerminalCursorVisible(activeTerminalIndex.value, true))
+}
+
+async function setupNativeKeyboardListener() {
+  if (Capacitor.getPlatform?.() !== 'android') {
+    return
+  }
+
+  try {
+    nativeKeyboardListenerHandle = await KeyboardState.addListener('keyboardStateChange', state => {
+      syncKeyboardStateFromNative(state)
+    })
+
+    const state = await KeyboardState.getState()
+    syncKeyboardStateFromNative(state)
+  } catch (error) {
+    addDebug(`原生键盘监听不可用: ${error.message}`, 'warning')
+  }
 }
 
 // 保持覆盖层常驻：浏览、滚动和选择都经过覆盖层手势处理，输入通过双击或键盘按钮触发。
@@ -1578,6 +1629,7 @@ onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
   // 加载调试设置
   loadDebugSetting()
+  setupNativeKeyboardListener()
 })
 
 onUnmounted(() => {
@@ -1590,6 +1642,8 @@ onUnmounted(() => {
   window.visualViewport?.removeEventListener('resize', handleVisualViewportResize)
   window.visualViewport?.removeEventListener('scroll', handleVisualViewportResize)
   document.removeEventListener('keydown', handleKeydown)
+  nativeKeyboardListenerHandle?.remove?.()
+  nativeKeyboardListenerHandle = null
   // 离开页面时只销毁 xterm 实例，不断开服务器终端连接
   // 这样用户重新进入时可以恢复终端
   terminals.value.forEach((t) => {

@@ -1,8 +1,8 @@
 {
-  "versionCode": 1987697,
+  "versionCode": 1987698,
   "forceUpdate": false,
-  "version": "1.4.44",
+  "version": "1.4.45",
   "filename": "TaroTora.apk",
-  "changelog": "修复移动端输入按钮未显示输入状态的问题",
-  "updatedAt": "2026-04-13T19:35:00.000+08:00"
+  "changelog": "修复移动端输入法主动收起键盘后输入状态残留的问题",
+  "updatedAt": "2026-04-13T20:05:00.000+08:00"
 }
