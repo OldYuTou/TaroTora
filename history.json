@@ -1182,5 +1182,29 @@
       "bdpan upload .\\TaroTora-release-v1.4.37.apk TaroTora/TaroTora-release-v1.4.37.apk 返回上传成功",
       "bdpan ls TaroTora 确认远端存在 TaroTora-release-v1.4.37.apk，修改时间为 2026-04-13 13:33:22"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "修复 Android 切到后台后收不到终端提醒的问题",
+    "changes": [
+      "将后台提醒服务的启停从 WebView/JS 事件补充下沉到 Android 原生 MainActivity 生命周期，在 onStop 时按已保存配置直接拉起服务，在 onResume 时停止后台监听",
+      "TerminalReminderBackgroundService 新增 hasStoredConfig 与 startMonitoringIfConfigured，避免切后台瞬间依赖前端异步状态刷新",
+      "App.vue 在登录态校验通过后立即把 serverUrl 和 token 同步到原生层，即使用户很快切后台也能保证原生服务有可用配置",
+      "将 Web 与 Android 版本提升到 1.4.38 / 1987691，重建前端资源、同步到 server/public，并生成正式签名 APK 后覆盖 server/apk/TaroTora.apk"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-b2ec276f.js、index-5362a7b2.css、web-66c677db.js",
+      "web: npm run cap:sync 通过",
+      "server: node --check src/index.js 通过",
+      "server: node --check src/routes/terminal.js 通过",
+      "android: .\\gradlew.bat assembleDebug --console=plain 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: zipalign + apksigner 正式签名生成 TaroTora-release-v1.4.38.apk，并同步到 TaroTora.apk 与 server/apk/TaroTora.apk",
+      "APK: aapt dump badging 确认 versionCode=1987691、versionName=1.4.38",
+      "APK: apksigner verify --print-certs 确认证书 SHA-256 为 REDACTED_RELEASE_FINGERPRINT",
+      "APK: jar tf 确认包含 assets/public/assets/index-b2ec276f.js、assets/public/assets/index-5362a7b2.css、assets/public/assets/web-66c677db.js",
+      "服务端: 本地与公网 /api/app/version 均返回 version=1.4.38、versionCode=1987691、fileExists=true",
+      "ADB: adb devices -l 为空，本轮未执行真机覆盖安装与后台通知实机验证"
+    ]
   }
 ]

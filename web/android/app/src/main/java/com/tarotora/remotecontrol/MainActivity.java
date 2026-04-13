@@ -2,8 +2,6 @@ package com.tarotora.remotecontrol;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
-import com.getcapacitor.Plugin;
-import java.util.ArrayList;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -14,5 +12,20 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(SharePlugin.class);
         registerPlugin(InstallerPlugin.class);
         registerPlugin(TerminalReminderBackgroundPlugin.class);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        if (!isChangingConfigurations()) {
+            TerminalReminderBackgroundService.startMonitoringIfConfigured(this);
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        TerminalReminderBackgroundService.stopMonitoring(this, false);
     }
 }

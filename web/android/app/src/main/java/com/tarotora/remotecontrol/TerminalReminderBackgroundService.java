@@ -88,6 +88,25 @@ public class TerminalReminderBackgroundService extends Service {
         ContextCompat.startForegroundService(context, intent);
     }
 
+    public static boolean hasStoredConfig(Context context) {
+        SharedPreferences preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String storedServerUrl = safeTrim(preferences.getString(KEY_SERVER_URL, ""));
+        String storedAuthToken = safeTrim(preferences.getString(KEY_AUTH_TOKEN, ""));
+        return !TextUtils.isEmpty(storedServerUrl) && !TextUtils.isEmpty(storedAuthToken);
+    }
+
+    public static boolean startMonitoringIfConfigured(Context context) {
+        if (!hasStoredConfig(context)) {
+            Log.i(TAG, "后台提醒未启动：尚未保存服务端配置");
+            return false;
+        }
+
+        Intent intent = new Intent(context, TerminalReminderBackgroundService.class);
+        intent.setAction(ACTION_START);
+        ContextCompat.startForegroundService(context, intent);
+        return true;
+    }
+
     public static void stopMonitoring(Context context, boolean clearConfig) {
         if (clearConfig) {
             clearConfig(context);

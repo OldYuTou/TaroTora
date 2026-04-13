@@ -481,7 +481,7 @@ function checkAuth() {
   let serverUrl = normalizeServerUrl(localStorage.getItem('server_url') || '')
 
   if (!token || !serverUrl) {
-    stopBackgroundReminderService(true)
+    void stopBackgroundReminderService(true)
     if (route.path !== '/login') {
       router.push('/login')
     }
@@ -497,6 +497,12 @@ function checkAuth() {
   axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
 
   localStorage.setItem('server_url', serverUrl)
+  void syncBackgroundReminderService({
+    serverUrl,
+    token,
+    enabled: false,
+    appActive: true
+  })
 
   connectSocket()
 
@@ -504,7 +510,7 @@ function checkAuth() {
 }
 
 function logout() {
-  stopBackgroundReminderService(true)
+  void stopBackgroundReminderService(true)
   localStorage.removeItem('auth_token')
   localStorage.removeItem('server_url')
   router.push('/login')
