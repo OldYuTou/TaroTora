@@ -1,8 +1,8 @@
 {
-  "versionCode": 1987703,
+  "versionCode": 1987704,
   "forceUpdate": false,
-  "version": "1.4.50",
+  "version": "1.4.51",
   "filename": "TaroTora.apk",
-  "changelog": "移动端键盘模式新增方向摇杆，支持拖拽方向键和按住连发",
-  "updatedAt": "2026-04-14T00:20:00.000+08:00"
+  "changelog": "缩小移动端方向摇杆并移除底部文字，释放控制栏空间",
+  "updatedAt": "2026-04-14T00:40:07.598+08:00"
 }

@@ -207,6 +207,7 @@
             'dir-left': joystickState.direction === 'left',
             'dir-right': joystickState.direction === 'right'
           }"
+          aria-label="方向摇杆"
           title="方向摇杆"
           @pointerdown.prevent="handleJoystickPointerDown(activeTerminalIndex, $event)"
         >
@@ -217,7 +218,6 @@
             <span class="joystick-arrow left">←</span>
             <div class="joystick-knob" :style="joystickKnobStyle"></div>
           </div>
-          <span>方向</span>
         </div>
         <button
           class="tool-btn mode-toggle"
@@ -1120,8 +1120,8 @@ const comboPendingLabel = computed(() => {
   return labels.join('+')
 })
 
-const JOYSTICK_DEADZONE = 14
-const JOYSTICK_MAX_OFFSET = 22
+const JOYSTICK_DEADZONE = 9
+const JOYSTICK_MAX_OFFSET = 15
 const JOYSTICK_REPEAT_DELAY_MS = 320
 const JOYSTICK_REPEAT_INTERVAL_MS = 85
 
@@ -2427,18 +2427,17 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 6px 14px;
+  justify-content: center;
+  padding: 4px 12px;
   color: #8b949e;
-  font-size: 11px;
   user-select: none;
   touch-action: none;
 }
 
 .joystick-pad {
   position: relative;
-  width: 62px;
-  height: 62px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   border: 1px solid #30363d;
   background: radial-gradient(circle at center, rgba(88, 166, 255, 0.08), rgba(13, 17, 23, 0.92));
@@ -2448,10 +2447,10 @@ onUnmounted(() => {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 26px;
-  height: 26px;
-  margin-left: -13px;
-  margin-top: -13px;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  margin-top: -9px;
   border-radius: 50%;
   background: #58a6ff;
   box-shadow: 0 0 12px rgba(88, 166, 255, 0.22);
@@ -2464,32 +2463,32 @@ onUnmounted(() => {
 
 .joystick-arrow {
   position: absolute;
-  font-size: 12px;
+  font-size: 10px;
   line-height: 1;
   color: #6e7681;
   transition: color 0.15s ease, transform 0.15s ease;
 }
 
 .joystick-arrow.up {
-  top: 6px;
+  top: 4px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .joystick-arrow.right {
-  right: 8px;
+  right: 5px;
   top: 50%;
   transform: translateY(-50%);
 }
 
 .joystick-arrow.down {
-  bottom: 6px;
+  bottom: 4px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .joystick-arrow.left {
-  left: 8px;
+  left: 5px;
   top: 50%;
   transform: translateY(-50%);
 }

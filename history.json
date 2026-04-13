@@ -1498,5 +1498,27 @@
       "服务端: http://127.0.0.1:3000/api/app/version 返回 version=1.4.50、versionCode=1987703、fileExists=true",
       "ADB: 当前设备 f68a31ec 在线，但本轮未执行覆盖安装"
     ]
+  },
+  {
+    "date": "2026-04-14",
+    "summary": "缩小移动端方向摇杆并发布 1.4.51",
+    "changes": [
+      "移除键盘模式下方向摇杆底部的“方向”文字，直接释放控制栏纵向空间",
+      "将方向摇杆可视尺寸缩到原先约三分之二，摇杆底盘、圆点、箭头和拖拽位移阈值一并按比例收紧",
+      "为方向摇杆补充 aria-label，保持没有文字标签后的可访问性",
+      "将 Web 与 Android 版本提升到 1.4.51 / 1987704，重建前端资源、同步 server/public，并重新生成正式签名 APK 安装到手机"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-b1377d00.js、index-fea3b453.css、web-ce3a4f49.js、web-52f5d46a.js",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: release 构建输出为 app-release-unsigned.apk，随后使用 web/android/android.keystore、alias=tarotora、口令 REDACTED 执行 zipalign + apksigner 正式签名，生成 TaroTora-release-v1.4.51.apk",
+      "APK: aapt dump badging 与 apksigner verify --print-certs 确认 versionCode=1987704、versionName=1.4.51，证书 SHA-256 保持 REDACTED_RELEASE_FINGERPRINT",
+      "APK: jar tf 确认包含 assets/public/assets/index-b1377d00.js、index-fea3b453.css、web-ce3a4f49.js、web-52f5d46a.js",
+      "服务端: http://127.0.0.1:3000/api/app/version 返回 version=1.4.51、versionCode=1987704、fileExists=true",
+      "ADB: adb install -r REDACTED_PATHTaroTora-release-v1.4.51.apk 返回 Success",
+      "ADB: adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987704、versionName=1.4.51",
+      "ADB: adb shell am start -n com.tarotora.remotecontrol/.MainActivity 已成功拉起应用"
+    ]
   }
 ]
