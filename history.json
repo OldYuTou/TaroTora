@@ -1478,5 +1478,25 @@
       "服务端: http://127.0.0.1:3000/api/app/version 将返回 version=1.4.49、versionCode=1987702、fileExists=true",
       "ADB: 本轮签名完成时 adb devices 无在线设备，因此尚未完成真机覆盖安装"
     ]
+  },
+  {
+    "date": "2026-04-14",
+    "summary": "移动端键盘模式新增方向摇杆并发布 1.4.50",
+    "changes": [
+      "将键盘模式下中间的“新建终端”按钮替换为方向摇杆，浏览模式下仍保留原有新建终端按钮",
+      "新增方向摇杆拖拽逻辑：拖到上、下、左、右任一方向时立即发送一次方向键，继续按住超过 320ms 后按 85ms 间隔连续发送对应方向键",
+      "新增摇杆视觉反馈，拖拽时摇杆圆点跟随位移并高亮当前方向提示",
+      "收起键盘、切换终端、关闭终端或离开页面时会自动停止方向键连发并重置摇杆状态",
+      "将 Web 与 Android 版本提升到 1.4.50 / 1987703，重建前端资源、同步 server/public，并生成正式签名 APK"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-2fd9d74e.js、index-a94bd2c3.css、web-3f0d6f8f.js、web-cef0a4e8.js",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: zipalign + apksigner 正式签名生成 TaroTora-release-v1.4.50.apk",
+      "APK: aapt dump badging 与 apksigner verify --print-certs 确认 versionCode=1987703、versionName=1.4.50，证书 SHA-256 保持 REDACTED_RELEASE_FINGERPRINT",
+      "服务端: http://127.0.0.1:3000/api/app/version 返回 version=1.4.50、versionCode=1987703、fileExists=true",
+      "ADB: 当前设备 f68a31ec 在线，但本轮未执行覆盖安装"
+    ]
   }
 ]

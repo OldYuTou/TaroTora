@@ -190,13 +190,35 @@
           </svg>
           <span>组合键</span>
         </button>
-        <button class="tool-btn" @click="showNewTerminalDialog">
+        <button v-if="!inputMode" class="tool-btn" @click="showNewTerminalDialog">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
           <span>新建终端</span>
         </button>
+        <div
+          v-else
+          class="joystick-control"
+          :class="{
+            active: joystickState.active,
+            'dir-up': joystickState.direction === 'up',
+            'dir-down': joystickState.direction === 'down',
+            'dir-left': joystickState.direction === 'left',
+            'dir-right': joystickState.direction === 'right'
+          }"
+          title="方向摇杆"
+          @pointerdown.prevent="handleJoystickPointerDown(activeTerminalIndex, $event)"
+        >
+          <div class="joystick-pad">
+            <span class="joystick-arrow up">↑</span>
+            <span class="joystick-arrow right">→</span>
+            <span class="joystick-arrow down">↓</span>
+            <span class="joystick-arrow left">←</span>
+            <div class="joystick-knob" :style="joystickKnobStyle"></div>
+          </div>
+          <span>方向</span>
+        </div>
         <button
           class="tool-btn mode-toggle"
           :class="{ active: inputMode }"
@@ -644,6 +666,7 @@ function exitMobileInputMode(index = activeTerminalIndex.value, shouldBlur = fal
 
   inputMode.value = false
   resetComboInputState()
+  resetJoystickState()
   startKeyboardCloseSync(index)
 }
 
@@ -1075,6 +1098,15 @@ const comboModifierState = ref({
   alt: false,
   shift: false
 })
+const joystickState = ref({
+  active: false,
+  direction: '',
+  offsetX: 0,
+  offsetY: 0
+})
+const joystickKnobStyle = computed(() => ({
+  transform: `translate(${joystickState.value.offsetX}px, ${joystickState.value.offsetY}px)`
+}))
 const hasActiveComboModifiers = computed(() => (
   comboModifierState.value.ctrl
   || comboModifierState.value.alt
@@ -1087,6 +1119,18 @@ const comboPendingLabel = computed(() => {
   if (comboModifierState.value.shift) labels.push('Shift')
   return labels.join('+')
 })
+
+const JOYSTICK_DEADZONE = 14
+const JOYSTICK_MAX_OFFSET = 22
+const JOYSTICK_REPEAT_DELAY_MS = 320
+const JOYSTICK_REPEAT_INTERVAL_MS = 85
+
+let joystickPointerId = null
+let joystickPointerTarget = null
+let joystickTerminalIndex = null
+let joystickOriginPoint = null
+let joystickRepeatDelayTimer = null
+let joystickRepeatIntervalTimer = null
 
 function resetComboInputState({ keepPanel = false } = {}) {
   comboModifierState.value = {
@@ -1239,6 +1283,158 @@ function sendComboSpecialKey(key, index = activeTerminalIndex.value) {
   sendInputToTerminal(index, payload)
   keepTerminalCursorVisible(index)
   restoreActiveTerminalInputFocus(index)
+}
+
+function stopJoystickRepeat() {
+  if (joystickRepeatDelayTimer) {
+    clearTimeout(joystickRepeatDelayTimer)
+    joystickRepeatDelayTimer = null
+  }
+  if (joystickRepeatIntervalTimer) {
+    clearInterval(joystickRepeatIntervalTimer)
+    joystickRepeatIntervalTimer = null
+  }
+}
+
+function resetJoystickState() {
+  stopJoystickRepeat()
+  if (joystickPointerTarget && joystickPointerId !== null) {
+    try {
+      joystickPointerTarget.releasePointerCapture?.(joystickPointerId)
+    } catch {}
+  }
+  joystickPointerId = null
+  joystickPointerTarget = null
+  joystickTerminalIndex = null
+  joystickOriginPoint = null
+  joystickState.value = {
+    active: false,
+    direction: '',
+    offsetX: 0,
+    offsetY: 0
+  }
+  window.removeEventListener('pointermove', handleJoystickPointerMove)
+  window.removeEventListener('pointerup', handleJoystickPointerUp)
+  window.removeEventListener('pointercancel', handleJoystickPointerUp)
+}
+
+function getJoystickDirection(deltaX, deltaY) {
+  const absX = Math.abs(deltaX)
+  const absY = Math.abs(deltaY)
+  if (absX < JOYSTICK_DEADZONE && absY < JOYSTICK_DEADZONE) {
+    return ''
+  }
+
+  if (absX >= absY) {
+    return deltaX >= 0 ? 'right' : 'left'
+  }
+  return deltaY >= 0 ? 'down' : 'up'
+}
+
+function getDirectionPayload(direction) {
+  const payloadMap = {
+    up: '\x1b[A',
+    down: '\x1b[B',
+    right: '\x1b[C',
+    left: '\x1b[D'
+  }
+  return payloadMap[direction] || ''
+}
+
+function sendDirectionalKey(direction, index = activeTerminalIndex.value) {
+  const payload = getDirectionPayload(direction)
+  if (!payload) return
+
+  sendInputToTerminal(index, payload)
+  keepTerminalCursorVisible(index)
+}
+
+function startJoystickRepeat(direction, index = activeTerminalIndex.value) {
+  stopJoystickRepeat()
+  if (!direction) return
+
+  joystickRepeatDelayTimer = setTimeout(() => {
+    sendDirectionalKey(direction, index)
+    joystickRepeatIntervalTimer = setInterval(() => {
+      sendDirectionalKey(direction, joystickTerminalIndex ?? index)
+    }, JOYSTICK_REPEAT_INTERVAL_MS)
+  }, JOYSTICK_REPEAT_DELAY_MS)
+}
+
+function updateJoystickDirection(direction) {
+  if (joystickState.value.direction === direction) {
+    return
+  }
+
+  joystickState.value.direction = direction
+  stopJoystickRepeat()
+  if (!direction || joystickTerminalIndex === null) {
+    return
+  }
+
+  sendDirectionalKey(direction, joystickTerminalIndex)
+  startJoystickRepeat(direction, joystickTerminalIndex)
+}
+
+function handleJoystickPointerDown(index = activeTerminalIndex.value, event) {
+  if (!inputMode.value) return
+
+  resetJoystickState()
+  const pad = event.currentTarget?.querySelector?.('.joystick-pad') || event.currentTarget
+  const rect = pad?.getBoundingClientRect?.()
+  if (!rect) return
+
+  joystickPointerId = event.pointerId ?? null
+  joystickPointerTarget = event.currentTarget || null
+  joystickTerminalIndex = index
+  joystickOriginPoint = {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2
+  }
+  joystickState.value = {
+    active: true,
+    direction: '',
+    offsetX: 0,
+    offsetY: 0
+  }
+
+  try {
+    joystickPointerTarget?.setPointerCapture?.(event.pointerId)
+  } catch {}
+
+  window.addEventListener('pointermove', handleJoystickPointerMove, { passive: false })
+  window.addEventListener('pointerup', handleJoystickPointerUp)
+  window.addEventListener('pointercancel', handleJoystickPointerUp)
+  restoreActiveTerminalInputFocus(index)
+}
+
+function handleJoystickPointerMove(event) {
+  if (!joystickState.value.active) return
+  if (joystickPointerId !== null && event.pointerId !== joystickPointerId) return
+
+  event.preventDefault?.()
+  const deltaX = event.clientX - joystickOriginPoint.x
+  const deltaY = event.clientY - joystickOriginPoint.y
+  const distance = Math.hypot(deltaX, deltaY)
+  const ratio = distance > JOYSTICK_MAX_OFFSET && distance > 0
+    ? JOYSTICK_MAX_OFFSET / distance
+    : 1
+
+  joystickState.value.offsetX = Math.round(deltaX * ratio)
+  joystickState.value.offsetY = Math.round(deltaY * ratio)
+  updateJoystickDirection(getJoystickDirection(deltaX, deltaY))
+}
+
+function handleJoystickPointerUp(event) {
+  if (joystickPointerId !== null && event?.pointerId !== undefined && event.pointerId !== joystickPointerId) {
+    return
+  }
+
+  const restoreIndex = joystickTerminalIndex
+  resetJoystickState()
+  if (restoreIndex !== null) {
+    restoreActiveTerminalInputFocus(restoreIndex)
+  }
 }
 
 watch(isKeyboardVisible, (visible, previousVisible) => {
@@ -1680,6 +1876,7 @@ async function initXterm(id, index) {
 function switchTerminal(index) {
   activeTerminalIndex.value = index
   resetComboInputState()
+  resetJoystickState()
   // 重新调整大小，更新覆盖层状态
   nextTick(() => {
     const term = termInstances[index]
@@ -1747,6 +1944,7 @@ function closeTerminal(index, { confirmClose = true } = {}) {
   terminals.value.splice(index, 1)
   terminalRefs.value.splice(index, 1)
   resetComboInputState()
+  resetJoystickState()
 
   // 调整活动终端索引
   if (activeTerminalIndex.value >= terminals.value.length) {
@@ -1913,6 +2111,7 @@ onMounted(() => {
 onUnmounted(() => {
   clearTerminalTouch()
   clearKeyboardCloseSync()
+  resetJoystickState()
   terminalResizeObserver?.disconnect()
   terminalResizeObserver = null
   hideTerminalContextMenu()
@@ -2222,6 +2421,84 @@ onUnmounted(() => {
   background: #161b22;
   border-top: 1px solid #30363d;
   z-index: 100;
+}
+
+.joystick-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  color: #8b949e;
+  font-size: 11px;
+  user-select: none;
+  touch-action: none;
+}
+
+.joystick-pad {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  border: 1px solid #30363d;
+  background: radial-gradient(circle at center, rgba(88, 166, 255, 0.08), rgba(13, 17, 23, 0.92));
+}
+
+.joystick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  margin-left: -13px;
+  margin-top: -13px;
+  border-radius: 50%;
+  background: #58a6ff;
+  box-shadow: 0 0 12px rgba(88, 166, 255, 0.22);
+  transition: transform 0.05s linear, background 0.15s ease;
+}
+
+.joystick-control.active .joystick-knob {
+  background: #79c0ff;
+}
+
+.joystick-arrow {
+  position: absolute;
+  font-size: 12px;
+  line-height: 1;
+  color: #6e7681;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.joystick-arrow.up {
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.joystick-arrow.right {
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.joystick-arrow.down {
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.joystick-arrow.left {
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.joystick-control.dir-up .joystick-arrow.up,
+.joystick-control.dir-right .joystick-arrow.right,
+.joystick-control.dir-down .joystick-arrow.down,
+.joystick-control.dir-left .joystick-arrow.left {
+  color: #79c0ff;
 }
 
 .tool-btn {
