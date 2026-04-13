@@ -102,8 +102,62 @@
       </div>
 
       <!-- 终端工具栏 -->
+      <div v-if="inputMode && comboPanelVisible" class="combo-panel">
+        <div class="combo-panel-header">
+          <span class="combo-panel-title">组合键</span>
+          <span v-if="comboPendingLabel" class="combo-panel-status">{{ comboPendingLabel }} + 字母</span>
+        </div>
+        <div class="combo-panel-grid">
+          <button
+            class="combo-key-btn"
+            @pointerdown.prevent
+            @click.prevent="sendComboSpecialKey('tab', activeTerminalIndex)"
+          >
+            Tab
+          </button>
+          <button
+            class="combo-key-btn modifier"
+            :class="{ active: comboModifierState.ctrl }"
+            @pointerdown.prevent
+            @click.prevent="toggleComboModifier('ctrl', activeTerminalIndex)"
+          >
+            Ctrl
+          </button>
+          <button
+            class="combo-key-btn modifier"
+            :class="{ active: comboModifierState.alt }"
+            @pointerdown.prevent
+            @click.prevent="toggleComboModifier('alt', activeTerminalIndex)"
+          >
+            Alt
+          </button>
+          <button
+            class="combo-key-btn"
+            @pointerdown.prevent
+            @click.prevent="sendComboSpecialKey('esc', activeTerminalIndex)"
+          >
+            Esc
+          </button>
+          <button
+            class="combo-key-btn modifier"
+            :class="{ active: comboModifierState.shift }"
+            @pointerdown.prevent
+            @click.prevent="toggleComboModifier('shift', activeTerminalIndex)"
+          >
+            Shift
+          </button>
+          <button
+            class="combo-key-btn"
+            @pointerdown.prevent
+            @click.prevent="sendComboSpecialKey('enter', activeTerminalIndex)"
+          >
+            Enter
+          </button>
+        </div>
+      </div>
       <div class="terminal-toolbar">
         <button
+          v-if="!inputMode"
           class="tool-btn reminder-toggle"
           :class="{ active: terminals[activeTerminalIndex]?.reminderEnabled }"
           :aria-pressed="terminals[activeTerminalIndex]?.reminderEnabled ? 'true' : 'false'"
@@ -117,6 +171,24 @@
             <path d="M20 4 22 6"></path>
           </svg>
           <span>提醒</span>
+        </button>
+        <button
+          v-else
+          class="tool-btn combo-toggle"
+          :class="{ active: comboPanelVisible || hasActiveComboModifiers }"
+          :aria-pressed="comboPanelVisible ? 'true' : 'false'"
+          title="组合键"
+          @pointerdown.prevent
+          @click.prevent="toggleComboPanel(activeTerminalIndex)"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="8" height="6" rx="1.5"></rect>
+            <rect x="13" y="4" width="8" height="6" rx="1.5"></rect>
+            <rect x="3" y="14" width="8" height="6" rx="1.5"></rect>
+            <path d="M15 17h4"></path>
+            <path d="M17 15v4"></path>
+          </svg>
+          <span>组合键</span>
         </button>
         <button class="tool-btn" @click="showNewTerminalDialog">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -571,6 +643,7 @@ function exitMobileInputMode(index = activeTerminalIndex.value, shouldBlur = fal
   }
 
   inputMode.value = false
+  resetComboInputState()
   startKeyboardCloseSync(index)
 }
 
@@ -996,6 +1069,177 @@ const showDebug = ref(false)
 
 // 输入模式开关 - true为输入模式(点击唤起键盘)，false为浏览模式(可滚动)
 const inputMode = ref(false)
+const comboPanelVisible = ref(false)
+const comboModifierState = ref({
+  ctrl: false,
+  alt: false,
+  shift: false
+})
+const hasActiveComboModifiers = computed(() => (
+  comboModifierState.value.ctrl
+  || comboModifierState.value.alt
+  || comboModifierState.value.shift
+))
+const comboPendingLabel = computed(() => {
+  const labels = []
+  if (comboModifierState.value.ctrl) labels.push('Ctrl')
+  if (comboModifierState.value.alt) labels.push('Alt')
+  if (comboModifierState.value.shift) labels.push('Shift')
+  return labels.join('+')
+})
+
+function resetComboInputState({ keepPanel = false } = {}) {
+  comboModifierState.value = {
+    ctrl: false,
+    alt: false,
+    shift: false
+  }
+  if (!keepPanel) {
+    comboPanelVisible.value = false
+  }
+}
+
+function restoreActiveTerminalInputFocus(index = activeTerminalIndex.value) {
+  if (!inputMode.value) return
+
+  const input = inputRefs.value[index]
+  if (!input) return
+
+  nextTick(() => {
+    input.focus({ preventScroll: true })
+    syncKeyboardViewport()
+  })
+}
+
+function toggleComboPanel(index = activeTerminalIndex.value) {
+  if (!inputMode.value) return
+
+  comboPanelVisible.value = !comboPanelVisible.value
+  if (!comboPanelVisible.value) {
+    resetComboInputState()
+    return
+  }
+
+  restoreActiveTerminalInputFocus(index)
+}
+
+function toggleComboModifier(modifier, index = activeTerminalIndex.value) {
+  if (!(modifier in comboModifierState.value)) return
+
+  comboPanelVisible.value = true
+  comboModifierState.value[modifier] = !comboModifierState.value[modifier]
+  restoreActiveTerminalInputFocus(index)
+}
+
+function toShiftedCharacter(char) {
+  if (!char) return char
+
+  if (char >= 'a' && char <= 'z') {
+    return char.toUpperCase()
+  }
+
+  const shiftedMap = {
+    '1': '!',
+    '2': '@',
+    '3': '#',
+    '4': '$',
+    '5': '%',
+    '6': '^',
+    '7': '&',
+    '8': '*',
+    '9': '(',
+    '0': ')',
+    '-': '_',
+    '=': '+',
+    '[': '{',
+    ']': '}',
+    '\\': '|',
+    ';': ':',
+    '\'': '"',
+    ',': '<',
+    '.': '>',
+    '/': '?',
+    '`': '~'
+  }
+
+  return shiftedMap[char] || char
+}
+
+function toControlCharacter(char) {
+  if (!char) return null
+
+  const upper = char.toUpperCase()
+  if (upper >= 'A' && upper <= 'Z') {
+    return String.fromCharCode(upper.charCodeAt(0) - 64)
+  }
+
+  const controlMap = {
+    '@': '\x00',
+    ' ': '\x00',
+    '[': '\x1b',
+    '\\': '\x1c',
+    ']': '\x1d',
+    '^': '\x1e',
+    '_': '\x1f'
+  }
+
+  return controlMap[upper] || null
+}
+
+function buildComboPayload(char) {
+  if (!char) return ''
+
+  let outputChar = comboModifierState.value.shift
+    ? toShiftedCharacter(char)
+    : char
+
+  if (comboModifierState.value.ctrl) {
+    outputChar = toControlCharacter(outputChar) || outputChar
+  }
+
+  return `${comboModifierState.value.alt ? '\x1b' : ''}${outputChar}`
+}
+
+function consumePendingComboInput(index, rawValue) {
+  if (!hasActiveComboModifiers.value || !rawValue) {
+    return false
+  }
+
+  const characters = Array.from(rawValue)
+  if (!characters.length) {
+    return false
+  }
+
+  const [firstChar, ...restChars] = characters
+  const payload = buildComboPayload(firstChar)
+  if (payload) {
+    sendInputToTerminal(index, payload)
+  }
+
+  const remainingText = restChars.join('')
+  if (remainingText) {
+    sendInputToTerminal(index, remainingText)
+  }
+
+  resetComboInputState({ keepPanel: true })
+  keepTerminalCursorVisible(index)
+  return true
+}
+
+function sendComboSpecialKey(key, index = activeTerminalIndex.value) {
+  const payloadMap = {
+    tab: '\t',
+    esc: '\x1b',
+    enter: '\r'
+  }
+
+  const payload = payloadMap[key]
+  if (!payload) return
+
+  sendInputToTerminal(index, payload)
+  keepTerminalCursorVisible(index)
+  restoreActiveTerminalInputFocus(index)
+}
 
 watch(isKeyboardVisible, (visible, previousVisible) => {
   if (!visible && previousVisible && inputMode.value) {
@@ -1015,6 +1259,12 @@ function handleMobileInput(event, index) {
   if (!getTerminalInstance(index) || !textarea || composingInputs.value[index]) return
 
   const value = textarea.value
+  if (consumePendingComboInput(index, value)) {
+    textarea.value = ''
+    inputBuffers.value[index] = ''
+    return
+  }
+
   if (value) {
     sendInputToTerminal(index, value)
   }
@@ -1034,6 +1284,12 @@ function handleCompositionEnd(event, index) {
 
   composingInputs.value[index] = false
   const data = event.target.value || event.data
+  if (consumePendingComboInput(index, data)) {
+    event.target.value = ''
+    inputBuffers.value[index] = ''
+    return
+  }
+
   if (data) {
     sendInputToTerminal(index, data)
   }
@@ -1423,6 +1679,7 @@ async function initXterm(id, index) {
 // 切换终端
 function switchTerminal(index) {
   activeTerminalIndex.value = index
+  resetComboInputState()
   // 重新调整大小，更新覆盖层状态
   nextTick(() => {
     const term = termInstances[index]
@@ -1489,6 +1746,7 @@ function closeTerminal(index, { confirmClose = true } = {}) {
   // 移除终端
   terminals.value.splice(index, 1)
   terminalRefs.value.splice(index, 1)
+  resetComboInputState()
 
   // 调整活动终端索引
   if (activeTerminalIndex.value >= terminals.value.length) {
@@ -1896,6 +2154,64 @@ onUnmounted(() => {
 }
 
 /* 终端工具栏 */
+.combo-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 10px;
+  background: #161b22;
+  border-top: 1px solid #30363d;
+  border-bottom: 1px solid #30363d;
+}
+
+.combo-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.combo-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f0f6fc;
+}
+
+.combo-panel-status {
+  font-size: 12px;
+  color: #58a6ff;
+}
+
+.combo-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.combo-key-btn {
+  min-height: 40px;
+  padding: 8px 10px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #c9d1d9;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.combo-key-btn:active {
+  border-color: #58a6ff;
+  color: #58a6ff;
+}
+
+.combo-key-btn.modifier.active {
+  background: rgba(88, 166, 255, 0.16);
+  border-color: #58a6ff;
+  color: #58a6ff;
+}
+
 .terminal-toolbar {
   flex-shrink: 0;
   position: relative;
@@ -1944,6 +2260,12 @@ onUnmounted(() => {
 .tool-btn.reminder-toggle.active {
   color: #f2cc60;
   background: rgba(242, 204, 96, 0.14);
+  border-radius: 8px;
+}
+
+.tool-btn.combo-toggle.active {
+  color: #58a6ff;
+  background: rgba(88, 166, 255, 0.15);
   border-radius: 8px;
 }
 

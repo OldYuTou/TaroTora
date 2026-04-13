@@ -1458,5 +1458,25 @@
       "服务端: http://127.0.0.1:3000/api/app/version 返回 version=1.4.48、versionCode=1987701、fileExists=true",
       "ADB: 构建与签名完成后执行 adb install -r 时设备已断开，当前 adb devices 无在线设备，因此本轮未完成真机覆盖安装"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "移动端终端新增组合键面板并发布 1.4.49",
+    "changes": [
+      "输入模式下将左侧工具按钮从“提醒”切换为“组合键”，点击后在工具栏上方展开组合键面板",
+      "组合键面板新增 Tab、Ctrl、Alt、Esc、Shift、Enter 六类按钮，其中 Ctrl、Alt、Shift 可锁存为蓝色高亮状态",
+      "当修饰键处于锁存状态时，移动端输入框会拦截下一次字母输入，将其转换为 Ctrl/Alt/Shift 组合后发送到终端；Tab、Esc、Enter 按钮则直接立即发送",
+      "收起键盘、切换终端或关闭终端时，会自动清理组合键面板和修饰键状态，避免串到下一次输入",
+      "将 Web 与 Android 版本提升到 1.4.49 / 1987702，重建前端资源、同步 server/public，并生成正式签名 APK"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-ed166210.js、index-3da776db.css、web-06bd1b9b.js、web-a7f7f6bb.js",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: zipalign + apksigner 正式签名生成 TaroTora-release-v1.4.49.apk",
+      "APK: aapt dump badging 与 apksigner verify --print-certs 确认 versionCode=1987702、versionName=1.4.49，证书 SHA-256 保持 REDACTED_RELEASE_FINGERPRINT",
+      "服务端: http://127.0.0.1:3000/api/app/version 将返回 version=1.4.49、versionCode=1987702、fileExists=true",
+      "ADB: 本轮签名完成时 adb devices 无在线设备，因此尚未完成真机覆盖安装"
+    ]
   }
 ]

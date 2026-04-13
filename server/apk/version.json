@@ -1,8 +1,8 @@
 {
-  "versionCode": 1987701,
+  "versionCode": 1987702,
   "forceUpdate": false,
-  "version": "1.4.48",
+  "version": "1.4.49",
   "filename": "TaroTora.apk",
-  "changelog": "修复移动端键盘按钮短点击被 blur 和 click 连续触发导致关掉又重开",
-  "updatedAt": "2026-04-13T22:10:00.000+08:00"
+  "changelog": "移动端终端新增组合键面板，支持 Ctrl Alt Shift 与 Tab Esc Enter",
+  "updatedAt": "2026-04-13T22:45:00.000+08:00"
 }
