@@ -1339,5 +1339,25 @@
       "ADB: adb install -r REDACTED_PATHTaroTora-release-v1.4.42.apk 返回 Success",
       "ADB: adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987695、versionName=1.4.42"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "修复移动端收起键盘后工具栏输入状态残留并发布 1.4.43",
+    "changes": [
+      "将移动端终端工具栏的输入按钮显示状态从单纯依赖 inputMode 改为依赖 inputMode 与 isKeyboardVisible 的组合，避免输入法主动收起后按钮仍显示“输入中”",
+      "新增对 isKeyboardVisible 的监听，只要页面检测到键盘已经隐藏就立即回收输入模式，补齐 Android WebView 未触发 textarea blur 的场景",
+      "将 Web 与 Android 版本提升到 1.4.43 / 1987696，重新构建前端资源、同步 server/public，并生成正式签名 APK 安装到手机"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-c4033733.js、index-3e543bb5.css、web-14f99f17.js、web-41701de0.js",
+      "web: npm run cap:sync 通过",
+      "server: node --check src/index.js 通过",
+      "server: node --check src/routes/terminal.js 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过；中途出现 mergeDexRelease 文件锁，执行 .\\gradlew.bat --stop 并清理 app\\build\\intermediates\\dex\\release\\mergeDexRelease 后重试成功",
+      "APK: aapt dump badging 与 apksigner verify --print-certs 确认 versionCode=1987696、versionName=1.4.43，证书 SHA-256 保持 REDACTED_RELEASE_FINGERPRINT",
+      "服务端: http://127.0.0.1:3000/api/app/version 返回 version=1.4.43、versionCode=1987696、fileExists=true",
+      "ADB: adb install -r REDACTED_PATHTaroTora-release-v1.4.43.apk 返回 Success",
+      "ADB: adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987696、versionName=1.4.43"
+    ]
   }
 ]
