@@ -1246,5 +1246,22 @@
       "服务端: 本地与公网 /api/app/version 均已返回 version=1.4.39、versionCode=1987692、fileExists=true",
       "ADB: adb devices -l 为空，本轮未执行真机安装与后台通知实机验证"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "安装 1.4.39 正式 APK 到手机",
+    "changes": [
+      "确认 ADB 已识别设备 f68a31ec（型号 23127PN0CC）",
+      "使用正式签名包 TaroTora-release-v1.4.39.apk 对手机当前安装的 1.4.38 执行覆盖安装，保留应用数据",
+      "安装后重新拉起 com.tarotora.remotecontrol/.MainActivity 并确认应用进程启动"
+    ],
+    "verification": [
+      "adb devices -l 显示设备 f68a31ec 处于 device 状态",
+      "adb shell dumpsys package com.tarotora.remotecontrol 安装前确认 versionCode=1987691、versionName=1.4.38",
+      "adb install -r REDACTED_PATHTaroTora-release-v1.4.39.apk 返回 Success",
+      "adb shell dumpsys package com.tarotora.remotecontrol 安装后确认 versionCode=1987692、versionName=1.4.39",
+      "adb shell monkey -p com.tarotora.remotecontrol -c android.intent.category.LAUNCHER 1 成功拉起应用",
+      "adb shell pidof com.tarotora.remotecontrol 返回 PID 19277"
+    ]
   }
 ]
