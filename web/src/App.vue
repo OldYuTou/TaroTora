@@ -240,7 +240,7 @@ function isActiveTab(path) {
 
 let socket = null
 let reminderStateRefreshTimer = null
-let appStateListenerHandle = null
+const appStateListenerHandles = []
 
 // 震动反馈
 function vibrateFeedback(pattern = [50, 100, 50]) {
@@ -306,7 +306,10 @@ async function handleTerminalReminderReady(data) {
   await acknowledgeTerminalReminder(data)
 }
 
-function handleTerminalReminderStateChanged() {
+function handleTerminalReminderStateChanged(data) {
+  if (data?.reminderEnabled === true) {
+    hasEnabledTerminalReminders.value = true
+  }
   queueTerminalReminderStateRefresh()
 }
 
@@ -408,10 +411,14 @@ async function syncTerminalReminderBackgroundState() {
     return
   }
 
+  const shouldEnableBackgroundMonitoring = isAppActive.value
+    ? hasEnabledTerminalReminders.value
+    : true
+
   await syncBackgroundReminderService({
     serverUrl,
     token,
-    enabled: hasEnabledTerminalReminders.value,
+    enabled: shouldEnableBackgroundMonitoring,
     appActive: isAppActive.value
   })
 }
@@ -525,7 +532,23 @@ onMounted(() => {
     CapacitorApp.addListener('appStateChange', ({ isActive }) => {
       updateAppActivityState(isActive)
     }).then(handle => {
-      appStateListenerHandle = handle
+      appStateListenerHandles.push(handle)
+    }).catch(error => {
+      console.error('监听应用前后台状态失败:', error)
+    })
+
+    CapacitorApp.addListener('pause', () => {
+      updateAppActivityState(false)
+    }).then(handle => {
+      appStateListenerHandles.push(handle)
+    }).catch(error => {
+      console.error('监听应用 pause 失败:', error)
+    })
+
+    CapacitorApp.addListener('resume', () => {
+      updateAppActivityState(true)
+    }).then(handle => {
+      appStateListenerHandles.push(handle)
     }).catch(error => {
       console.error('监听应用前后台状态失败:', error)
     })
@@ -554,8 +577,9 @@ onUnmounted(() => {
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   window.visualViewport?.removeEventListener('resize', updateAppViewportHeight)
   window.visualViewport?.removeEventListener('scroll', updateAppViewportHeight)
-  appStateListenerHandle?.remove?.()
-  appStateListenerHandle = null
+  while (appStateListenerHandles.length > 0) {
+    appStateListenerHandles.pop()?.remove?.()
+  }
 })
 </script>
 

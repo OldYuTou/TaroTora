@@ -1149,5 +1149,25 @@
       "ADB: adb shell am start -n com.tarotora.remotecontrol/.MainActivity 成功，adb shell pidof com.tarotora.remotecontrol 返回 PID 23496",
       "服务端: http://127.0.0.1:3000/api/app/version 与 https://REDACTED_DOMAIN/api/app/version 均返回 version=1.4.36、versionCode=1987689、fileExists=true"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "修复退到后台时终端提醒服务未及时启动的问题",
+    "changes": [
+      "定位到后台提醒不触发的关键竞态：App 退后台时原生服务的启动依赖 hasEnabledTerminalReminders，而该状态要等一次异步 /api/terminals/reminders/state 刷新，用户快速切后台时容易还没刷新完成",
+      "App.vue 调整为只要应用进入后台且已登录就先启动原生后台提醒服务，再由服务端第一次 /pull 轮询决定继续监听还是自停，不再依赖前端那一拍状态缓存",
+      "新增 Capacitor App 的 pause 和 resume 监听，较 appStateChange 更早地同步前后台状态，减少 Android 切后台时机丢失",
+      "将 Web / Android 版本提升到 1.4.37 / 1987690，重建并正式签名 TaroTora-release-v1.4.37.apk，同步更新到 TaroTora.apk 与 server/apk/TaroTora.apk"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-e10a17b4.js、index-bdcb36c1.css、web-e0e4d881.js",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleDebug --console=plain 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: aapt dump badging 确认 TaroTora-release-v1.4.37.apk 的 versionCode=1987690、versionName=1.4.37，并包含前台服务权限",
+      "APK: apksigner verify --print-certs 确认证书 SHA-256 为 REDACTED_RELEASE_FINGERPRINT",
+      "服务端: 本地与公网 /api/app/version 均已返回 version=1.4.37、versionCode=1987690、fileExists=true",
+      "ADB: 本轮尝试重新连接设备时 adb devices -l 为空，因此尚未把 1.4.37 覆盖安装到手机"
+    ]
   }
 ]
