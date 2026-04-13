@@ -1,8 +1,8 @@
 {
-  "versionCode": 1987699,
+  "versionCode": 1987700,
   "forceUpdate": false,
-  "version": "1.4.46",
+  "version": "1.4.47",
   "filename": "TaroTora.apk",
-  "changelog": "调整移动端终端输入为仅键盘按钮显式切换",
-  "updatedAt": "2026-04-13T20:20:00.000+08:00"
+  "changelog": "修复移动端键盘按钮再次点击时无法主动收起软键盘",
+  "updatedAt": "2026-04-13T21:45:00.000+08:00"
 }

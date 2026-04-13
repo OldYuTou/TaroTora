@@ -652,9 +652,24 @@ function focusTerminalInput(index = activeTerminalIndex.value) {
   })
 }
 
-function toggleTerminalInputMode(index = activeTerminalIndex.value) {
-  if (inputMode.value) {
+async function hideNativeKeyboard() {
+  if (Capacitor.getPlatform?.() !== 'android') {
+    return false
+  }
+
+  try {
+    const result = await KeyboardState.hide()
+    return Boolean(result?.hidden)
+  } catch (error) {
+    addDebug(`原生收键盘失败: ${error.message}`, 'warning')
+    return false
+  }
+}
+
+async function toggleTerminalInputMode(index = activeTerminalIndex.value) {
+  if (inputMode.value || isKeyboardVisible.value || hasFocusedTerminalInput()) {
     exitMobileInputMode(index, true)
+    await hideNativeKeyboard()
     return
   }
 

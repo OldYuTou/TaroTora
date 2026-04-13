@@ -1418,5 +1418,27 @@
       "ADB: adb install -r REDACTED_PATHTaroTora-release-v1.4.46.apk 返回 Success",
       "ADB: adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987699、versionName=1.4.46"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "修复移动端键盘按钮再次点击无法收起并发布 1.4.47",
+    "changes": [
+      "定位到键盘按钮关闭路径此前只执行 exitMobileInputMode 和 textarea blur，未显式调用 Android 原生输入法收起逻辑，导致部分输入法第二次点击按钮后仍停留在屏幕上",
+      "ControlMobile.vue 新增 hideNativeKeyboard，并将键盘按钮切换条件扩大到 inputMode、isKeyboardVisible 与输入框焦点三者任一成立时都走显式收键盘流程",
+      "Android KeyboardStatePlugin 增加 hide 方法，调用 InputMethodManager.hideSoftInputFromWindow 后主动清理焦点并回推 keyboardStateChange=false",
+      "将 Web 与 Android 版本提升到 1.4.47 / 1987700，重建前端资源、同步 server/public，并生成正式签名 APK 安装到手机"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-19b74449.js、index-447d2dc3.css、web-d1aa60ba.js、web-4051450e.js",
+      "web: npm run cap:sync 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: zipalign + apksigner 正式签名生成 TaroTora-release-v1.4.47.apk",
+      "APK: aapt dump badging 与 apksigner verify --print-certs 确认 versionCode=1987700、versionName=1.4.47，证书 SHA-256 保持 REDACTED_RELEASE_FINGERPRINT",
+      "服务端: http://127.0.0.1:3000/api/app/version 返回 version=1.4.47、versionCode=1987700、fileExists=true",
+      "服务端静态资源: http://127.0.0.1:3000/ 已加载 /assets/index-19b74449.js 与 /assets/index-447d2dc3.css",
+      "ADB: adb install -r REDACTED_PATHTaroTora-release-v1.4.47.apk 返回 Success",
+      "ADB: adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987700、versionName=1.4.47",
+      "ADB: adb shell am start -n com.tarotora.remotecontrol/.MainActivity 已成功拉起应用"
+    ]
   }
 ]
