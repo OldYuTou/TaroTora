@@ -65,12 +65,42 @@ public class TerminalReminderBackgroundService extends Service {
     private boolean monitoringEnabled = false;
     private boolean appActive = true;
 
+    private static void logStoredState(Context context, String prefix) {
+        SharedPreferences preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String storedServerUrl = safeTrim(preferences.getString(KEY_SERVER_URL, ""));
+        String storedAuthToken = safeTrim(preferences.getString(KEY_AUTH_TOKEN, ""));
+        boolean storedMonitoringEnabled = preferences.getBoolean(KEY_MONITORING_ENABLED, false);
+        boolean storedAppActive = preferences.getBoolean(KEY_APP_ACTIVE, true);
+
+        Log.i(
+            TAG,
+            prefix
+                + " monitoringEnabled=" + storedMonitoringEnabled
+                + " appActive=" + storedAppActive
+                + " serverUrlPresent=" + !TextUtils.isEmpty(storedServerUrl)
+                + " tokenPresent=" + !TextUtils.isEmpty(storedAuthToken)
+        );
+    }
+
+    private void logRuntimeState(String prefix) {
+        Log.i(
+            TAG,
+            prefix
+                + " monitoringEnabled=" + monitoringEnabled
+                + " appActive=" + appActive
+                + " serverUrlPresent=" + !TextUtils.isEmpty(serverUrl)
+                + " tokenPresent=" + !TextUtils.isEmpty(authToken)
+                + " pollInFlight=" + pollInFlight
+        );
+    }
+
     public static void storeConfig(Context context, String serverUrl, String authToken) {
         SharedPreferences preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         preferences.edit()
             .putString(KEY_SERVER_URL, safeTrim(serverUrl))
             .putString(KEY_AUTH_TOKEN, safeTrim(authToken))
-            .apply();
+            .commit();
+        logStoredState(context, "storeConfig:");
     }
 
     public static void storeMonitoringState(Context context, boolean enabled, boolean appActive) {
@@ -78,13 +108,15 @@ public class TerminalReminderBackgroundService extends Service {
         preferences.edit()
             .putBoolean(KEY_MONITORING_ENABLED, enabled)
             .putBoolean(KEY_APP_ACTIVE, appActive)
-            .apply();
+            .commit();
+        logStoredState(context, "storeMonitoringState:");
     }
 
     public static void updateAppActiveState(Context context, boolean appActive) {
         SharedPreferences preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         boolean enabled = preferences.getBoolean(KEY_MONITORING_ENABLED, false);
         storeMonitoringState(context, enabled, appActive);
+        logStoredState(context, "updateAppActiveState:");
     }
 
     public static void clearConfig(Context context) {
@@ -94,7 +126,8 @@ public class TerminalReminderBackgroundService extends Service {
             .remove(KEY_AUTH_TOKEN)
             .remove(KEY_MONITORING_ENABLED)
             .remove(KEY_APP_ACTIVE)
-            .apply();
+            .commit();
+        logStoredState(context, "clearConfig:");
     }
 
     public static void startMonitoring(Context context, String serverUrl, String authToken) {
@@ -107,6 +140,7 @@ public class TerminalReminderBackgroundService extends Service {
         intent.putExtra(EXTRA_AUTH_TOKEN, safeTrim(authToken));
 
         try {
+            Log.i(TAG, "startMonitoring: startForegroundService");
             ContextCompat.startForegroundService(context, intent);
         } catch (RuntimeException exception) {
             Log.e(TAG, "启动后台提醒前台服务失败", exception);
@@ -121,6 +155,7 @@ public class TerminalReminderBackgroundService extends Service {
     }
 
     public static boolean startMonitoringIfConfigured(Context context) {
+        logStoredState(context, "startMonitoringIfConfigured:");
         if (!hasStoredConfig(context)) {
             Log.i(TAG, "后台提醒未启动：尚未保存服务端配置");
             return false;
@@ -129,6 +164,7 @@ public class TerminalReminderBackgroundService extends Service {
         Intent intent = new Intent(context, TerminalReminderBackgroundService.class);
         intent.setAction(ACTION_START);
         try {
+            Log.i(TAG, "startMonitoringIfConfigured: startForegroundService");
             ContextCompat.startForegroundService(context, intent);
             return true;
         } catch (RuntimeException exception) {
@@ -138,12 +174,14 @@ public class TerminalReminderBackgroundService extends Service {
     }
 
     public static void stopMonitoring(Context context, boolean clearConfig) {
+        logStoredState(context, "stopMonitoring: before");
         if (clearConfig) {
             clearConfig(context);
         }
 
         Intent intent = new Intent(context, TerminalReminderBackgroundService.class);
         context.stopService(intent);
+        logStoredState(context, "stopMonitoring: after");
     }
 
     private static String safeTrim(String value) {
@@ -154,11 +192,21 @@ public class TerminalReminderBackgroundService extends Service {
     public void onCreate() {
         super.onCreate();
         ensureNotificationChannels();
+        Log.i(TAG, "onCreate");
+        logStoredState(this, "onCreate stored:");
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent != null ? intent.getAction() : ACTION_START;
+        Log.i(
+            TAG,
+            "onStartCommand action=" + action
+                + " startId=" + startId
+                + " flags=" + flags
+                + " extrasServerUrlPresent=" + !TextUtils.isEmpty(safeTrim(intent != null ? intent.getStringExtra(EXTRA_SERVER_URL) : null))
+                + " extrasTokenPresent=" + !TextUtils.isEmpty(safeTrim(intent != null ? intent.getStringExtra(EXTRA_AUTH_TOKEN) : null))
+        );
 
         if (ACTION_STOP.equals(action)) {
             stopSelfSafely();
@@ -175,6 +223,7 @@ public class TerminalReminderBackgroundService extends Service {
         }
 
         refreshMonitoringState();
+        logRuntimeState("onStartCommand after refresh:");
 
         if (!monitoringEnabled) {
             Log.i(TAG, "后台提醒未启用，停止监听");
@@ -189,6 +238,7 @@ public class TerminalReminderBackgroundService extends Service {
         }
 
         startForeground(FOREGROUND_NOTIFICATION_ID, buildForegroundNotification());
+        Log.i(TAG, "startForeground success");
         scheduleNextPoll(0);
         return START_STICKY;
     }
@@ -201,22 +251,33 @@ public class TerminalReminderBackgroundService extends Service {
 
     @Override
     public void onDestroy() {
+        Log.i(TAG, "onDestroy");
         handler.removeCallbacksAndMessages(null);
         executor.shutdownNow();
         super.onDestroy();
     }
 
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        Log.w(TAG, "onTaskRemoved");
+        super.onTaskRemoved(rootIntent);
+    }
+
     private void scheduleNextPoll(long delayMs) {
+        Log.i(TAG, "scheduleNextPoll delayMs=" + delayMs);
         handler.removeCallbacks(pollRunnable);
         handler.postDelayed(pollRunnable, Math.max(0L, delayMs));
     }
 
     private void requestReminderPoll() {
+        logRuntimeState("requestReminderPoll enter:");
         if (pollInFlight) {
+            Log.i(TAG, "requestReminderPoll skipped: poll already in flight");
             return;
         }
 
         refreshMonitoringState();
+        logRuntimeState("requestReminderPoll after refresh:");
 
         if (!monitoringEnabled) {
             Log.i(TAG, "后台提醒已禁用，停止后台监听");
@@ -225,6 +286,7 @@ public class TerminalReminderBackgroundService extends Service {
         }
 
         if (appActive) {
+            Log.i(TAG, "requestReminderPoll skipped: appActive=true");
             scheduleNextPoll(POLL_INTERVAL_MS);
             return;
         }
@@ -233,6 +295,11 @@ public class TerminalReminderBackgroundService extends Service {
         executor.execute(() -> {
             try {
                 PollResult result = pullPendingReminders();
+                Log.i(
+                    TAG,
+                    "requestReminderPoll result reminders=" + result.reminders.size()
+                        + " hasEnabledReminders=" + result.hasEnabledReminders
+                );
                 deliverReminderNotifications(result.reminders);
 
                 if (!result.hasEnabledReminders) {
@@ -250,6 +317,7 @@ public class TerminalReminderBackgroundService extends Service {
                 Log.e(TAG, "拉取后台终端提醒失败", exception);
             } finally {
                 pollInFlight = false;
+                Log.i(TAG, "requestReminderPoll finish pollInFlight=false");
             }
 
             scheduleNextPoll(POLL_INTERVAL_MS);
@@ -260,13 +328,16 @@ public class TerminalReminderBackgroundService extends Service {
         SharedPreferences preferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         monitoringEnabled = preferences.getBoolean(KEY_MONITORING_ENABLED, false);
         appActive = preferences.getBoolean(KEY_APP_ACTIVE, true);
+        logRuntimeState("refreshMonitoringState:");
     }
 
     private PollResult pullPendingReminders() throws Exception {
         HttpURLConnection connection = null;
 
         try {
-            URL url = new URL(buildApiUrl("/api/terminals/reminders/pull"));
+            String apiUrl = buildApiUrl("/api/terminals/reminders/pull");
+            Log.i(TAG, "pullPendingReminders request=" + apiUrl);
+            URL url = new URL(apiUrl);
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("POST");
             connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
@@ -297,6 +368,7 @@ public class TerminalReminderBackgroundService extends Service {
             PollResult result = new PollResult();
             result.hasEnabledReminders = monitoringJson == null || monitoringJson.optBoolean("hasEnabledReminders", true);
             if (remindersJson == null) {
+                Log.i(TAG, "pullPendingReminders parsed reminders=0");
                 return result;
             }
 
@@ -314,6 +386,11 @@ public class TerminalReminderBackgroundService extends Service {
                 result.reminders.add(reminder);
             }
 
+            Log.i(
+                TAG,
+                "pullPendingReminders parsed reminders=" + result.reminders.size()
+                    + " hasEnabledReminders=" + result.hasEnabledReminders
+            );
             return result;
         } finally {
             if (connection != null) {
@@ -323,6 +400,7 @@ public class TerminalReminderBackgroundService extends Service {
     }
 
     private void deliverReminderNotifications(List<TerminalReminder> reminders) {
+        Log.i(TAG, "deliverReminderNotifications count=" + reminders.size());
         for (TerminalReminder reminder : reminders) {
             showReminderNotification(reminder);
         }
@@ -331,6 +409,7 @@ public class TerminalReminderBackgroundService extends Service {
     private void showReminderNotification(TerminalReminder reminder) {
         NotificationManager manager = getSystemService(NotificationManager.class);
         if (manager == null) {
+            Log.w(TAG, "showReminderNotification skipped: manager is null");
             return;
         }
 
@@ -348,6 +427,12 @@ public class TerminalReminderBackgroundService extends Service {
             ? reminder.name
             : resolveTerminalName(reminder.cwd);
         String body = terminalName + " 会话有新消息";
+        Log.i(
+            TAG,
+            "showReminderNotification terminalId=" + reminder.terminalId
+                + " reminderId=" + reminder.reminderId
+                + " body=" + body
+        );
 
         Notification notification = new NotificationCompat.Builder(this, REMINDER_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -450,6 +535,7 @@ public class TerminalReminderBackgroundService extends Service {
     }
 
     private void stopSelfSafely() {
+        logRuntimeState("stopSelfSafely:");
         handler.removeCallbacksAndMessages(null);
         stopForeground(true);
         stopSelf();

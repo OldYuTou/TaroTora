@@ -1263,5 +1263,26 @@
       "adb shell monkey -p com.tarotora.remotecontrol -c android.intent.category.LAUNCHER 1 成功拉起应用",
       "adb shell pidof com.tarotora.remotecontrol 返回 PID 19277"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "发布后台提醒调试版 1.4.40 并补充原生日志",
+    "changes": [
+      "在 Android 后台提醒服务、插件与 MainActivity 增加启动、状态刷新、轮询、通知投递日志",
+      "将后台提醒 SharedPreferences 写入从 apply 改为 commit，先排除状态持久化竞态",
+      "在 Web 侧后台提醒同步入口补充带标签的控制台日志，便于区分前端未发起与原生未接收",
+      "将 Web 与 Android 版本提升到 1.4.40 / 1987693，重建正式签名 APK 并安装到已连接手机"
+    ],
+    "verification": [
+      "web: npm run build",
+      "web: npm run cap:sync",
+      "server: node --check src/index.js",
+      "server: node --check src/routes/terminal.js",
+      "android: .\\gradlew.bat assembleDebug --console=plain",
+      "android: .\\gradlew.bat assembleRelease --console=plain",
+      "APK: apksigner verify --print-certs 确认 TaroTora-release-v1.4.40.apk 证书与现网正式包一致",
+      "ADB: adb install -r REDACTED_PATHTaroTora-release-v1.4.40.apk 返回 Success",
+      "ADB: adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987693、versionName=1.4.40"
+    ]
   }
 ]

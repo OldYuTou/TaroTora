@@ -1,6 +1,7 @@
 package com.tarotora.remotecontrol;
 
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -10,6 +11,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 @CapacitorPlugin(name = "TerminalReminderBackground")
 public class TerminalReminderBackgroundPlugin extends Plugin {
+    private static final String TAG = "TermReminderPlugin";
 
     @PluginMethod
     public void sync(PluginCall call) {
@@ -17,6 +19,14 @@ public class TerminalReminderBackgroundPlugin extends Plugin {
         boolean appActive = call.getBoolean("appActive", true);
         String serverUrl = call.getString("serverUrl", "");
         String token = call.getString("token", "");
+
+        Log.i(
+            TAG,
+            "sync enabled=" + enabled
+                + " appActive=" + appActive
+                + " serverUrlPresent=" + !TextUtils.isEmpty(serverUrl)
+                + " tokenPresent=" + !TextUtils.isEmpty(token)
+        );
 
         if (!TextUtils.isEmpty(serverUrl) && !TextUtils.isEmpty(token)) {
             TerminalReminderBackgroundService.storeConfig(getContext(), serverUrl, token);
@@ -33,12 +43,14 @@ public class TerminalReminderBackgroundPlugin extends Plugin {
         result.put("enabled", enabled);
         result.put("appActive", appActive);
         result.put("serviceRunning", enabled && !TextUtils.isEmpty(serverUrl) && !TextUtils.isEmpty(token));
+        Log.i(TAG, "sync resolved serviceRunning=" + result.getBool("serviceRunning"));
         call.resolve(result);
     }
 
     @PluginMethod
     public void stop(PluginCall call) {
         boolean clearConfig = call.getBoolean("clearConfig", false);
+        Log.i(TAG, "stop clearConfig=" + clearConfig);
         TerminalReminderBackgroundService.stopMonitoring(getContext(), clearConfig);
 
         JSObject result = new JSObject();

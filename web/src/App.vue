@@ -416,6 +416,14 @@ async function syncTerminalReminderBackgroundState() {
     ? hasEnabledTerminalReminders.value
     : true
 
+  console.info('[ReminderBG] syncTerminalReminderBackgroundState', {
+    appActive: isAppActive.value,
+    hasEnabledTerminalReminders: hasEnabledTerminalReminders.value,
+    shouldEnableBackgroundMonitoring,
+    serverUrlPresent: Boolean(serverUrl),
+    tokenPresent: Boolean(token)
+  })
+
   await syncBackgroundReminderService({
     serverUrl,
     token,
@@ -426,6 +434,7 @@ async function syncTerminalReminderBackgroundState() {
 
 function updateAppActivityState(active) {
   isAppActive.value = Boolean(active)
+  console.info('[ReminderBG] updateAppActivityState', { active: isAppActive.value })
   syncTerminalReminderBackgroundState()
 }
 
