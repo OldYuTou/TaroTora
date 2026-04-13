@@ -126,8 +126,8 @@
           </svg>
           <span>新建终端</span>
         </button>
-        <button class="tool-btn mode-toggle" :class="{ active: inputUiActive }" @click="focusTerminalInput(activeTerminalIndex)">
-          <svg v-if="inputUiActive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="tool-btn mode-toggle" :class="{ active: inputMode }" @click="focusTerminalInput(activeTerminalIndex)">
+          <svg v-if="inputMode" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
             <line x1="6" y1="8" x2="6" y2="8"></line>
             <line x1="10" y1="8" x2="10" y2="8"></line>
@@ -146,7 +146,7 @@
             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
             <circle cx="12" cy="12" r="3"></circle>
           </svg>
-          <span>{{ inputUiActive ? '输入中' : '键盘' }}</span>
+          <span>{{ inputMode ? '输入中' : '键盘' }}</span>
         </button>
       </div>
 
@@ -925,7 +925,6 @@ const showDebug = ref(false)
 
 // 输入模式开关 - true为输入模式(点击唤起键盘)，false为浏览模式(可滚动)
 const inputMode = ref(false)
-const inputUiActive = computed(() => inputMode.value && isKeyboardVisible.value)
 
 watch(isKeyboardVisible, (visible, previousVisible) => {
   if (!visible && previousVisible && inputMode.value) {

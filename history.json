@@ -1359,5 +1359,25 @@
       "ADB: adb install -r REDACTED_PATHTaroTora-release-v1.4.43.apk 返回 Success",
       "ADB: adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987696、versionName=1.4.43"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "修复移动端输入按钮不显示输入中并发布 1.4.44",
+    "changes": [
+      "将移动端终端工具栏的输入按钮显示状态重新切回由 inputMode 驱动，保证唤起键盘后立即显示“输入中”",
+      "保留基于 isKeyboardVisible 的收键盘回落逻辑，继续处理 Android WebView 在输入法主动收起键盘时不触发 blur 的场景",
+      "将 Web 与 Android 版本提升到 1.4.44 / 1987697，重新构建前端资源、同步 server/public，并生成正式签名 APK 安装到手机"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-eeaf9f0a.js、index-d782d3a7.css、web-4a8ad3df.js、web-4e97d3d5.js",
+      "web: npm run cap:sync 通过",
+      "server: node --check src/index.js 通过",
+      "server: node --check src/routes/terminal.js 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: aapt dump badging 与 apksigner verify --print-certs 确认 versionCode=1987697、versionName=1.4.44，证书 SHA-256 保持 REDACTED_RELEASE_FINGERPRINT",
+      "服务端: http://127.0.0.1:3000/api/app/version 返回 version=1.4.44、versionCode=1987697、fileExists=true",
+      "ADB: adb install -r REDACTED_PATHTaroTora-release-v1.4.44.apk 返回 Success",
+      "ADB: adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987697、versionName=1.4.44"
+    ]
   }
 ]
