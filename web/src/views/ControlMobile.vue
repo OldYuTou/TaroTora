@@ -85,7 +85,7 @@
               @compositionend="handleCompositionEnd($event, index)"
               @keydown="handleMobileKeydown($event, index)"
               @keyup="handleMobileKeyup($event, index)"
-              @blur="handleMobileInputBlur"
+              @blur="handleMobileInputBlur(index)"
             ></textarea>
             <!-- 透明覆盖层：默认浏览，双击唤起键盘，长按显示复制/粘贴菜单 -->
             <div
@@ -552,6 +552,21 @@ function clearKeyboardCloseSync() {
   }
 }
 
+function exitMobileInputMode(index = activeTerminalIndex.value, shouldBlur = false) {
+  const input = inputRefs.value[index]
+
+  if (shouldBlur && input && document.activeElement === input) {
+    input.blur()
+  }
+
+  if (!inputMode.value && !isKeyboardVisible.value) {
+    return
+  }
+
+  inputMode.value = false
+  startKeyboardCloseSync(index)
+}
+
 function startKeyboardCloseSync(index = activeTerminalIndex.value) {
   clearKeyboardCloseSync()
   isKeyboardVisible.value = false
@@ -575,9 +590,17 @@ function syncKeyboardViewport() {
     return
   }
 
+  const wasKeyboardVisible = isKeyboardVisible.value
   const keyboardOverlap = Math.max(0, layoutHeight - viewport.height - viewport.offsetTop)
   const viewportShrunk = viewport.height < layoutHeight - KEYBOARD_VISIBLE_THRESHOLD
-  isKeyboardVisible.value = inputMode.value && (keyboardOverlap > KEYBOARD_VISIBLE_THRESHOLD || viewportShrunk)
+  const keyboardNowVisible = inputMode.value && (keyboardOverlap > KEYBOARD_VISIBLE_THRESHOLD || viewportShrunk)
+
+  if (inputMode.value && wasKeyboardVisible && !keyboardNowVisible) {
+    exitMobileInputMode(activeTerminalIndex.value, true)
+    return
+  }
+
+  isKeyboardVisible.value = keyboardNowVisible
   if (isKeyboardVisible.value) {
     keyboardViewportHeight.value = `${Math.max(220, viewport.height - KEYBOARD_SAFE_GAP)}px`
   } else {
@@ -624,9 +647,8 @@ function focusTerminalInput(index = activeTerminalIndex.value) {
   })
 }
 
-function handleMobileInputBlur() {
-  inputMode.value = false
-  startKeyboardCloseSync(activeTerminalIndex.value)
+function handleMobileInputBlur(index = activeTerminalIndex.value) {
+  exitMobileInputMode(index)
 }
 
 // 保持覆盖层常驻：浏览、滚动和选择都经过覆盖层手势处理，输入通过双击或键盘按钮触发。

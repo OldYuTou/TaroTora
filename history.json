@@ -1307,5 +1307,17 @@
       "ADB: logcat 确认后台服务实际请求 https://REDACTED_DOMAIN/api/terminals/reminders/pull，解析到 reminders=2 并执行 showReminderNotification",
       "ADB: dumpsys notification 确认 terminal-reminder-monitor 前台服务通知与 terminal-reminders 业务通知已进入系统通知栈"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "修复移动端收起键盘后工具栏仍显示输入中的状态残留",
+    "changes": [
+      "移动端终端输入框 blur 时改为按终端索引回收输入模式，避免非当前索引时状态残留",
+      "新增统一的退出输入模式逻辑，在 VisualViewport 检测到软键盘已经收起但页面仍停留在输入模式时主动回收状态并执行收键盘后的终端同步"
+    ],
+    "verification": [
+      "web: npm run build 通过",
+      "server: node --check src/index.js 通过"
+    ]
   }
 ]
