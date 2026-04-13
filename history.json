@@ -1169,5 +1169,18 @@
       "服务端: 本地与公网 /api/app/version 均已返回 version=1.4.37、versionCode=1987690、fileExists=true",
       "ADB: 本轮尝试重新连接设备时 adb devices -l 为空，因此尚未把 1.4.37 覆盖安装到手机"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "上传 1.4.37 正式 APK 到百度网盘",
+    "changes": [
+      "使用本机 bdpan 已登录账号将 TaroTora-release-v1.4.37.apk 上传到百度网盘 TaroTora 目录",
+      "确认远端目录中已出现 TaroTora-release-v1.4.37.apk，可供手机端下载安装"
+    ],
+    "verification": [
+      "bdpan whoami 确认账号“REDACTED_USER”已登录且 Token 有效",
+      "bdpan upload .\\TaroTora-release-v1.4.37.apk TaroTora/TaroTora-release-v1.4.37.apk 返回上传成功",
+      "bdpan ls TaroTora 确认远端存在 TaroTora-release-v1.4.37.apk，修改时间为 2026-04-13 13:33:22"
+    ]
   }
 ]
