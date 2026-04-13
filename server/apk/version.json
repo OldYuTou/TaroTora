@@ -1,8 +1,8 @@
 {
-  "versionCode": 1987694,
+  "versionCode": 1987695,
   "forceUpdate": false,
-  "version": "1.4.41",
+  "version": "1.4.42",
   "filename": "TaroTora.apk",
-  "changelog": "修复后台提醒原生层丢失登录配置的问题",
-  "updatedAt": "2026-04-13T18:20:00.000+08:00"
+  "changelog": "修复移动端收起键盘后输入状态残留的问题",
+  "updatedAt": "2026-04-13T19:05:00.000+08:00"
 }

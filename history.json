@@ -1319,5 +1319,25 @@
       "web: npm run build 通过",
       "server: node --check src/index.js 通过"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "发布并安装移动端输入状态修复版 1.4.42",
+    "changes": [
+      "将 Web 与 Android 版本提升到 1.4.42 / 1987695，并更新登录页、移动端设置页与 server/apk/version.json 版本元数据",
+      "重新构建前端资源并同步到 server/public，生成正式签名 APK TaroTora-release-v1.4.42.apk，同时覆盖 TaroTora.apk 与 server/apk/TaroTora.apk",
+      "通过 ADB 将 1.4.42 正式包安装到已连接手机 23127PN0CC"
+    ],
+    "verification": [
+      "web: npm run build 通过，产物为 index-23593d28.js、index-7377acf8.css、web-6004d33f.js、web-afe74e73.js",
+      "web: npm run cap:sync 通过",
+      "server: node --check src/index.js 通过",
+      "server: node --check src/routes/terminal.js 通过",
+      "android: .\\gradlew.bat assembleRelease --console=plain 通过",
+      "APK: aapt dump badging 与 apksigner verify --print-certs 确认 versionCode=1987695、versionName=1.4.42，证书 SHA-256 保持 REDACTED_RELEASE_FINGERPRINT",
+      "服务端: 本地与公网 /api/app/version 均返回 version=1.4.42、versionCode=1987695、fileExists=true",
+      "ADB: adb install -r REDACTED_PATHTaroTora-release-v1.4.42.apk 返回 Success",
+      "ADB: adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987695、versionName=1.4.42"
+    ]
   }
 ]
