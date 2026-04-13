@@ -1,8 +1,8 @@
 {
-  "version": "1.4.35",
-  "versionCode": 1987688,
+  "version": "1.4.36",
+  "versionCode": 1987689,
   "filename": "TaroTora.apk",
-  "changelog": "修复终端提醒通知未送达",
+  "changelog": "支持终端提醒在 Android 后台继续接收通知",
   "forceUpdate": false,
-  "updatedAt": "2026-04-13T02:49:48.342+08:00"
+  "updatedAt": "2026-04-13T13:00:00.000+08:00"
 }

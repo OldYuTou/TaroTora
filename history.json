@@ -1131,5 +1131,23 @@
       "APK: aapt 确认 debug 包 versionCode=1987689、versionName=1.4.36，且已包含 android.permission.FOREGROUND_SERVICE、android.permission.FOREGROUND_SERVICE_DATA_SYNC、android.permission.POST_NOTIFICATIONS",
       "ADB: 当前设备 f68a31ec 在线，已确认手机当前安装的是正式签名 1.4.35；本轮新 APK 尚未重新正式签名，因此未执行覆盖安装"
     ]
+  },
+  {
+    "date": "2026-04-13",
+    "summary": "签名并安装 1.4.36 正式 APK 到手机",
+    "changes": [
+      "确认 web/android/android.keystore 可用后，对 1.4.36 的 release unsigned APK 执行 zipalign 和正式签名，生成 TaroTora-release-v1.4.36.apk",
+      "将正式签名包同步到仓库根目录 TaroTora.apk 和 server/apk/TaroTora.apk，并把 server/apk/version.json 更新到 1.4.36 / 1987689",
+      "使用 adb 对已连接设备 f68a31ec 执行覆盖安装，并拉起 com.tarotora.remotecontrol/.MainActivity 验证新包可启动"
+    ],
+    "verification": [
+      "APK: aapt dump badging 确认 TaroTora-release-v1.4.36.apk 的 versionCode=1987689、versionName=1.4.36",
+      "APK: apksigner verify --print-certs 确认正式包证书 SHA-256 为 REDACTED_RELEASE_FINGERPRINT，与手机当前正式包一致",
+      "ADB: adb install -r .\\TaroTora-release-v1.4.36.apk 返回 Success",
+      "ADB: 再次从手机拉取 base.apk 并用 aapt 验证，确认已安装包为 versionCode=1987689、versionName=1.4.36",
+      "ADB: adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987689、versionName=1.4.36",
+      "ADB: adb shell am start -n com.tarotora.remotecontrol/.MainActivity 成功，adb shell pidof com.tarotora.remotecontrol 返回 PID 23496",
+      "服务端: http://127.0.0.1:3000/api/app/version 与 https://REDACTED_DOMAIN/api/app/version 均返回 version=1.4.36、versionCode=1987689、fileExists=true"
+    ]
   }
 ]
