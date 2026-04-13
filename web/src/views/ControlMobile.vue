@@ -125,7 +125,12 @@
           </svg>
           <span>新建终端</span>
         </button>
-        <button class="tool-btn mode-toggle" :class="{ active: inputMode }" @click="toggleTerminalInputMode(activeTerminalIndex)">
+        <button
+          class="tool-btn mode-toggle"
+          :class="{ active: inputMode }"
+          @pointerdown.prevent="handleKeyboardTogglePointerDown(activeTerminalIndex, $event)"
+          @click.prevent="handleKeyboardToggleClick(activeTerminalIndex)"
+        >
           <svg v-if="inputMode" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
             <line x1="6" y1="8" x2="6" y2="8"></line>
@@ -270,6 +275,7 @@ let longPressTimer = null
 let keyboardCloseSyncTimer = null
 let terminalResizeObserver = null
 let nativeKeyboardListenerHandle = null
+let keyboardToggleClickSuppressUntil = 0
 const terminalOutputQueues = new Map()
 
 // 调试信息
@@ -674,6 +680,23 @@ async function toggleTerminalInputMode(index = activeTerminalIndex.value) {
   }
 
   focusTerminalInput(index)
+}
+
+function handleKeyboardTogglePointerDown(index = activeTerminalIndex.value, event) {
+  if (typeof event?.button === 'number' && event.button !== 0) {
+    return
+  }
+
+  keyboardToggleClickSuppressUntil = Date.now() + 700
+  void toggleTerminalInputMode(index)
+}
+
+function handleKeyboardToggleClick(index = activeTerminalIndex.value) {
+  if (Date.now() < keyboardToggleClickSuppressUntil) {
+    return
+  }
+
+  void toggleTerminalInputMode(index)
 }
 
 function handleMobileInputBlur(index = activeTerminalIndex.value) {

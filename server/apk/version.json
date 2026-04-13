@@ -1,8 +1,8 @@
 {
-  "versionCode": 1987700,
+  "versionCode": 1987701,
   "forceUpdate": false,
-  "version": "1.4.47",
+  "version": "1.4.48",
   "filename": "TaroTora.apk",
-  "changelog": "修复移动端键盘按钮再次点击时无法主动收起软键盘",
-  "updatedAt": "2026-04-13T21:45:00.000+08:00"
+  "changelog": "修复移动端键盘按钮短点击被 blur 和 click 连续触发导致关掉又重开",
+  "updatedAt": "2026-04-13T22:10:00.000+08:00"
 }
