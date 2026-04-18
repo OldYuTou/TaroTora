@@ -1471,19 +1471,26 @@ async function handleFileSelect(e) {
 
 // 新建文件夹
 async function createNewFolder() {
-  const name = prompt('请输入文件夹名称:')
+  const inputName = prompt('请输入文件夹名称:')
+  const name = inputName?.trim()
   if (!name) return
+
+  if (/[\\/]/.test(name)) {
+    alert('文件夹名称不能包含 \\\\ 或 /')
+    return
+  }
 
   try {
     await axios.post(`${API_BASE}/files/mkdir`, {
-      path: currentPath.value ? `${currentPath.value}\\${name}` : `${name}\\`
+      path: currentPath.value,
+      name
     }, {
       headers: { Authorization: `Bearer ${token}` }
     })
     refresh()
   } catch (error) {
     console.error('创建文件夹失败:', error)
-    alert('创建失败: ' + error.message)
+    alert('创建失败: ' + (error.response?.data?.error || error.message))
   }
 }
 

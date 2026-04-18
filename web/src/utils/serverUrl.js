@@ -1,4 +1,4 @@
-const PUBLIC_SERVER_URL = 'https://REDACTED_DOMAIN'
+const PUBLIC_SERVER_URL = import.meta.env.VITE_PUBLIC_SERVER_URL || ''
 
 export function isNativeApp() {
   const capacitor = window.Capacitor
@@ -15,11 +15,13 @@ function isLocalHost(host) {
 
 function shouldUsePublicServerUrl(url) {
   if (!isNativeApp()) return false
+  if (!PUBLIC_SERVER_URL) return false
 
   try {
     const parsed = new URL(url)
     if (isLocalHost(parsed.hostname)) return true
-    return parsed.hostname === 'REDACTED_DOMAIN' && parsed.protocol === 'http:'
+    const publicParsed = new URL(PUBLIC_SERVER_URL)
+    return parsed.hostname === publicParsed.hostname && parsed.protocol === 'http:'
   } catch {
     return false
   }

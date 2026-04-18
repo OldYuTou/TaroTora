@@ -191,16 +191,31 @@ router.post('/rename', async (req, res) => {
  */
 router.post('/mkdir', async (req, res) => {
   try {
-    const { path: targetPath, name } = req.body;
-    if (!targetPath || !name) {
-      return res.status(400).json({ error: 'Path and name are required' });
+    const targetPath = typeof req.body.path === 'string' ? req.body.path.trim() : '';
+    const folderName = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+
+    if (!targetPath) {
+      return res.status(400).json({ error: 'Path is required' });
     }
-    
+
+    if (folderName && /[\\/]/.test(folderName)) {
+      return res.status(400).json({ error: 'Folder name cannot contain path separators' });
+    }
+
+    if (folderName === '.' || folderName === '..') {
+      return res.status(400).json({ error: 'Invalid folder name' });
+    }
+
     const resolvedPath = path.resolve(targetPath);
-    const newDir = path.join(resolvedPath, name);
-    
+    const newDir = folderName ? path.join(resolvedPath, folderName) : resolvedPath;
+    const finalName = path.basename(path.normalize(newDir));
+
+    if (!finalName || finalName === '.' || finalName === '..') {
+      return res.status(400).json({ error: 'Invalid folder path' });
+    }
+
     await fs.mkdir(newDir, { recursive: true });
-    
+
     res.json({ success: true, path: newDir });
   } catch (error) {
     res.status(500).json({ error: error.message });
