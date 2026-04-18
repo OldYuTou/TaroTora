@@ -20,6 +20,13 @@ ios/
 *.swp
 *.swo
 
+# IDE / Tools
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+
 # OS
 .DS_Store
 Thumbs.db
@@ -29,6 +36,10 @@ Thumbs.db
 *.jks
 *.keystore.base64
 *.jks.base64
+
+# APK files
+*.apk
+*.apk.idsig
 
 # Logs
 *.log
