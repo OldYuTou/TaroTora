@@ -123,14 +123,70 @@ frpc.exe -c frpc.toml
 - **本地访问**: http://localhost:5173（前端开发模式）
 - **公网访问**: http://your-domain.com:7500（通过 FRP）
 
-## 🔧 配置说明
+## 🔧 环境变量配置
 
-### 服务端环境变量 (.env)
+本项目使用环境变量进行配置，**请务必在运行前正确填写所有必填项**。
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| PORT | 服务端口 | 3000 |
-| AUTH_TOKEN | 认证 Token | your-secret-token |
+### 1. 服务端环境变量 (`server/.env`)
+
+```bash
+cd server
+cp .env.example .env
+# 编辑 .env 文件，填入你的实际配置
+```
+
+| 变量 | 必填 | 说明 | 默认值 |
+|------|------|------|--------|
+| **AUTH_TOKEN** | **是** | 认证令牌，客户端连接时必须提供。⚠️ **生产环境必须修改，不要使用默认值** | `your-secret-token-here` |
+| PORT | 否 | 服务监听端口 | `3000` |
+| FRP_ENABLED | 否 | 是否启用 FRP 内网穿透 | `false` |
+| FRP_SERVER_HOST | 条件 | FRP 服务端地址（FRP_ENABLED=true 时必填） | - |
+| FRP_SERVER_PORT | 否 | FRP 服务端端口 | `7000` |
+| FRP_TOKEN | 条件 | FRP 认证令牌（FRP_ENABLED=true 时必填） | - |
+| FRP_REMOTE_PORT | 条件 | 公网映射端口（FRP_ENABLED=true 时必填） | - |
+| FRP_TUNNEL_NAME | 否 | FRP 隧道名称 | `tarotora` |
+| FRPC_PATH | 否 | frpc 可执行文件路径（不在 PATH 时需指定） | - |
+
+**最小配置示例（仅本地使用）：**
+```
+AUTH_TOKEN=your-strong-secret-token
+```
+
+**完整配置示例（含 FRP 穿透）：**
+```
+PORT=3000
+AUTH_TOKEN=your-strong-secret-token
+
+FRP_ENABLED=true
+FRP_SERVER_HOST=your-frp-server.com
+FRP_SERVER_PORT=7000
+FRP_TOKEN=your-frp-token
+FRP_REMOTE_PORT=8300
+FRP_TUNNEL_NAME=tarotora
+```
+
+### 2. 前端环境变量 (`web/.env`)
+
+**仅在使用 Capacitor 构建 Android APK 时需要配置。**
+
+```bash
+cd web
+cp .env.example .env
+# 编辑 .env 文件，填入你的实际配置
+```
+
+| 变量 | 必填 | 说明 | 示例 |
+|------|------|------|------|
+| **VITE_PUBLIC_SERVER_URL** | **是（构建 APK 时）** | 公网服务器地址，用于 APK 自动纠正缓存地址 | `https://your-domain.com` |
+
+> **注意**：该变量仅在构建时注入，运行时修改 `.env` 不会生效，需要重新执行 `npm run build`。
+
+**配置示例：**
+```
+VITE_PUBLIC_SERVER_URL=https://your-domain.com
+```
+
+如果不配置，APK 中的自动地址纠正功能将不会生效，用户需要手动输入服务器地址。
 
 ### FRP 配置
 
