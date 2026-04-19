@@ -1545,5 +1545,20 @@
       "重启本地服务端后，http://127.0.0.1:3000/health 返回 status=ok",
       "带新 AUTH_TOKEN 访问 http://127.0.0.1:3000/api/system/info 成功"
     ]
+  },
+  {
+    "date": "2026-04-19",
+    "summary": "配置本地 frpc 并适配新版 FRP",
+    "changes": [
+      "将 FRP 客户端示例配置更新为 FRP 0.61.2+ 的 TOML 写法",
+      "服务端 FRP 客户端改为根据 server/.env 生成本地 frpc.toml，并通过 frpc -c 启动",
+      "本地忽略配置设置为 tarotora 隧道，映射本地 3000 到远端 53000，避免与现有 Frpc-Desktop 端口冲突",
+      "忽略 server/runtime 运行日志目录，避免测试日志和临时 frpc 配置误提交"
+    ],
+    "verification": [
+      "frpc -c server/frp/frpc.toml 使用新版 auth.token 配置可成功登录服务器",
+      "测试远端端口 53000 返回 start proxy success",
+      "重启本地服务端后，server/src/frp-client.js 自动拉起项目 frpc 进程并返回 FRP 连接成功"
+    ]
   }
 ]

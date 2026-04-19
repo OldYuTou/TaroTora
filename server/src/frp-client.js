@@ -14,6 +14,7 @@ class FrpClient {
     this.tunnelName = process.env.FRP_TUNNEL_NAME || 'tarotora';
     this.localPort = parseInt(process.env.PORT) || 3000;
     this.frpcPath = this.getFrpcPath();
+    this.configPath = path.join(__dirname, '..', 'frp', 'frpc.toml');
   }
 
   getFrpcPath() {
@@ -45,6 +46,32 @@ class FrpClient {
     } catch { return false; }
   }
 
+  quoteToml(value) {
+    return JSON.stringify(String(value ?? ''));
+  }
+
+  writeConfigFile() {
+    const config = [
+      `serverAddr = ${this.quoteToml(this.serverHost)}`,
+      `serverPort = ${this.serverPort}`,
+      '',
+      '[auth]',
+      `token = ${this.quoteToml(this.token)}`,
+      '',
+      '[[proxies]]',
+      `name = ${this.quoteToml(this.tunnelName)}`,
+      'type = "tcp"',
+      'localIP = "127.0.0.1"',
+      `localPort = ${this.localPort}`,
+      `remotePort = ${this.remotePort}`,
+      ''
+    ].join('\n');
+
+    fs.mkdirSync(path.dirname(this.configPath), { recursive: true });
+    fs.writeFileSync(this.configPath, config, 'utf8');
+    return this.configPath;
+  }
+
   async start() {
     if (!this.enabled) {
       console.log('📡 FRP: 未启用');
@@ -58,18 +85,13 @@ class FrpClient {
       console.log('❌ FRP: 未找到 frpc');
       return { success: false, reason: 'not_found' };
     }
+    if (!this.token) {
+      console.log('📡 FRP: 未配置认证令牌');
+      return { success: false, reason: 'missing_token' };
+    }
 
-    // FRP 0.61.2+ 使用新的命令行格式
-    const args = [
-      'tcp',
-      '-s', this.serverHost,
-      '-P', this.serverPort.toString(),
-      '-t', this.token,
-      '-n', this.tunnelName,
-      '-i', '127.0.0.1',
-      '-l', this.localPort.toString(),
-      '-r', this.remotePort.toString()
-    ];
+    const configPath = this.writeConfigFile();
+    const args = ['-c', configPath];
 
     console.log(`📡 FRP: 正在启动...`);
     console.log(`   ${this.localPort} → ${this.serverHost}:${this.remotePort}`);
@@ -77,33 +99,40 @@ class FrpClient {
     this.frpcProcess = spawn(this.frpcPath, args, { detached: false, windowsHide: true });
 
     return new Promise((resolve) => {
-      let connected = false;
+      let settled = false;
       let errorOutput = '';
+      let timeoutId = null;
+
+      const finish = (result) => {
+        if (settled) return;
+        settled = true;
+        if (timeoutId) clearTimeout(timeoutId);
+        resolve(result);
+      };
 
       this.frpcProcess.stdout.on('data', (data) => {
         const output = data.toString();
-        if (output.includes('login to server success')) {
-          connected = true;
+        if (output.includes('start proxy success')) {
           console.log('✅ FRP: 连接成功！');
-          resolve({ success: true, url: `${this.serverHost}:${this.remotePort}` });
+          finish({ success: true, url: `${this.serverHost}:${this.remotePort}` });
         }
       });
 
       this.frpcProcess.stderr.on('data', (data) => { errorOutput += data.toString(); });
 
       this.frpcProcess.on('close', (code) => {
-        if (!connected) {
+        if (!settled) {
           console.error(`❌ FRP: 失败 (码 ${code})`);
           if (errorOutput) console.error('   ', errorOutput.substring(0, 200));
-          resolve({ success: false, reason: 'connection_failed', error: errorOutput });
+          finish({ success: false, reason: 'connection_failed', error: errorOutput });
         }
       });
 
-      setTimeout(() => {
-        if (!connected) {
+      timeoutId = setTimeout(() => {
+        if (!settled) {
           console.error('❌ FRP: 超时');
           this.stop();
-          resolve({ success: false, reason: 'timeout' });
+          finish({ success: false, reason: 'timeout' });
         }
       }, 30000);
     });
