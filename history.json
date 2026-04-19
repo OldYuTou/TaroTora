@@ -1520,5 +1520,18 @@
       "ADB: adb shell dumpsys package com.tarotora.remotecontrol 确认 versionCode=1987704、versionName=1.4.51",
       "ADB: adb shell am start -n com.tarotora.remotecontrol/.MainActivity 已成功拉起应用"
     ]
+  },
+  {
+    "date": "2026-04-19",
+    "summary": "清理仓库敏感历史和构建产物提交风险",
+    "changes": [
+      "继续扫描 Git 历史中的敏感路径、token 模式、旧 node_modules 备份目录和 APK/idsig 构建产物",
+      "将 FRP 服务端示例 dashboard_password 从默认弱口令改为占位符",
+      "准备通过 Git 历史重写移除旧备份目录、node_modules、APK 和 idsig 二进制对象"
+    ],
+    "verification": [
+      "git grep/git rev-list 历史扫描确认风险集中在旧 projects.bak/node_modules、旧无关备份目录和 APK/idsig 构建产物",
+      "当前 APK/idsig 二进制明文扫描未发现 AUTH_TOKEN、FRP_TOKEN、Bearer token 或公网地址明文"
+    ]
   }
 ]

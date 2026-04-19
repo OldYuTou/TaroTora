@@ -8,7 +8,7 @@ bind_port = 7000
 # Dashboard 配置（可选，用于监控）
 dashboard_port = 7500
 dashboard_user = admin
-dashboard_password = admin123
+dashboard_password = your-dashboard-password-here
 
 # 认证配置
 token = your-frp-token-here
