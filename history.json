@@ -1533,5 +1533,17 @@
       "git grep/git rev-list 历史扫描确认风险集中在旧 projects.bak/node_modules、旧无关备份目录和 APK/idsig 构建产物",
       "当前 APK/idsig 二进制明文扫描未发现 AUTH_TOKEN、FRP_TOKEN、Bearer token 或公网地址明文"
     ]
+  },
+  {
+    "date": "2026-04-19",
+    "summary": "更新本地服务端访问令牌配置",
+    "changes": [
+      "按用户要求更新 server/.env 中的 AUTH_TOKEN 本地配置",
+      "未将令牌明文写入 history.json 或其他已跟踪文件"
+    ],
+    "verification": [
+      "重启本地服务端后，http://127.0.0.1:3000/health 返回 status=ok",
+      "带新 AUTH_TOKEN 访问 http://127.0.0.1:3000/api/system/info 成功"
+    ]
   }
 ]
